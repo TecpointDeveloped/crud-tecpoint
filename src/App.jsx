@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Autocomplete, AutocompleteItem } from "@nextui-org/react";
-import { db, storage } from "./firebaseConfig"; // Configura Firebase aquí
+import { db, storage } from "./firebaseConfig";
 import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -9,103 +8,215 @@ function App() {
     productName: "",
     description: "",
     sku: "",
+    upc: "",
+    slug: "",
     detailPrice: "",
     wholesalePrice: "",
     categories: [],
     brand: "",
     brandLogo: "",
-    permalink: "",
   });
 
-  const [imageFiles, setImageFiles] = useState([]); // Archivos seleccionados
+  const [imageFiles, setImageFiles] = useState([]);
+  const [previewImages, setPreviewImages] = useState([]);
+  const [error, setError] = useState("");
 
-  // Manejar cambios en el formulario
+  const [specifications, setSpecifications] = useState([{ key: "", value: "" }]);
+
+  const [sections, setSections] = useState([{ title: "", image: "" }]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  // Manejar selección de imágenes
   const handleImageChange = (e) => {
-    setImageFiles(Array.from(e.target.files)); // Convertimos FileList a Array
+    const files = Array.from(e.target.files);
+
+    const orderedFiles = files.map((file, index) => ({
+      file,
+      order: index,
+    }));
+
+    setImageFiles(orderedFiles);
+
+    const previews = orderedFiles.map(({ file }) => ({
+      id: file.name,
+      url: URL.createObjectURL(file),
+    }));
+    setPreviewImages(previews);
   };
 
-  // Subir imágenes al Storage y obtener URLs
+  const validateForm = () => {
+    const {
+      productName,
+      description,
+      sku,
+      upc,
+      slug,
+      detailPrice,
+      wholesalePrice,
+      categories,
+      brand,
+      brandLogo,
+    } = formData;
+
+    if (
+      !productName.trim() ||
+      !description.trim() ||
+      !sku.trim() ||
+      !upc.trim() ||
+      !slug.trim() ||
+      !detailPrice.trim() ||
+      !wholesalePrice.trim() ||
+      !categories.length ||
+      !brand.trim() ||
+      !brandLogo.trim() ||
+      !imageFiles.length
+    ) {
+      setError("Por favor, completa todos los campos y selecciona al menos una imagen.");
+      return false;
+    }
+
+    setError("");
+    return true;
+  };
+
   const uploadImagesToStorage = async (sku) => {
-    const uploadedImages = [];
+    const uploadedImages = {};
 
     for (let i = 0; i < imageFiles.length; i++) {
-      const file = imageFiles[i];
-      const imageRef = ref(storage, `productos/${formData.brand}/${sku}/${sku}_0${i + 1}`);
+      const { file, order } = imageFiles[i];
+      const imageIndex = order + 1;
+
+      const imageRef = ref(storage, `productos/${formData.brand}/${sku}/${sku}_0${imageIndex}`);
 
       await uploadBytes(imageRef, file);
       const imageUrl = await getDownloadURL(imageRef);
-      uploadedImages.push({ id: `${sku}_0${i + 1}`, img: imageUrl });
+
+      uploadedImages[`imagen_0${imageIndex}`] = {
+        id: `${sku}_0${imageIndex}`,
+        img: imageUrl,
+      };
     }
 
     return uploadedImages;
   };
 
-  // Manejar envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.sku || !formData.productName || !imageFiles.length) {
-      alert("Por favor, completa todos los campos obligatorios y selecciona imágenes.");
+    if (!validateForm()) {
       return;
     }
 
     try {
-      // Subir imágenes y obtener sus URLs
       const uploadedImages = await uploadImagesToStorage(formData.sku);
 
-      // Crear permalink
-      const permalink = `https://tecpoint.ws/shop/${formData.brand.toLowerCase()}-${formData.productName
-        .toLowerCase()
-        .replace(/ /g, "-")}`;
-
-      // Subir datos del producto a Firestore
-      await addDoc(collection(db, "productos"), {
-        categorias: formData.categories, // Array de categorías
+      await addDoc(collection(db, "Products"), {
+        categorias: formData.categories,
         descripcion: formData.description,
         fecha_agregado: new Date().toISOString(),
-        imagenes: uploadedImages, // Array de imágenes con ID y URL
+        imagenes: uploadedImages,
         marca_producto: {
           logo: formData.brandLogo,
           marca: formData.brand,
-          permalink: permalink,
         },
+        permalink: `https://tecpoint.ws/shop/${formData.slug}`,
         precio: {
           detalle: parseFloat(formData.detailPrice),
           mayoreo: parseFloat(formData.wholesalePrice),
         },
         producto: formData.productName,
         sku: formData.sku,
+        upc: formData.upc,
+        slug: formData.slug,
+        extradata: {
+          especificaciones: Object.fromEntries(
+            specifications.map((spec) => [spec.key, spec.value])
+          ),
+        },
+        secciones: sections.map((section) => ({
+          title: section.title,
+          image: section.image,
+        })),
       });
 
       alert("¡Producto subido con éxito!");
-      // Resetear formulario
+
       setFormData({
         productName: "",
         description: "",
         sku: "",
+        upc: "",
+        slug: "",
         detailPrice: "",
         wholesalePrice: "",
         categories: [],
         brand: "",
         brandLogo: "",
-        permalink: "",
       });
       setImageFiles([]);
+      setPreviewImages([]);
+      setSpecifications([{ key: "", value: "" }]);
+      setSections([{ title: "", image: "" }]);
     } catch (error) {
       console.error("Error subiendo producto:", error);
       alert("Hubo un error al subir el producto.");
     }
   };
 
+  const handleAddSpecification = () => {
+    setSpecifications([...specifications, { key: "", value: "" }]);
+  };
+
+  const handleSpecificationChange = (index, field, value) => {
+    const updatedSpecs = [...specifications];
+    updatedSpecs[index][field] = value;
+    setSpecifications(updatedSpecs);
+  };
+
+  const handleAddSection = () => {
+    setSections([...sections, { title: "", image: "" }]);
+  };
+
+  const handleSectionChange = (index, field, value) => {
+    const updatedSections = [...sections];
+    updatedSections[index][field] = value;
+    setSections(updatedSections);
+  };
+
   return (
     <div className="App">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-[500px]">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-[800px]">
+        <div>
+          <label className="font-[600]">Subir Imágenes del Producto</label>
+          <input
+            type="file"
+            multiple
+            onChange={handleImageChange}
+            className="border w-full py-2 px-4 rounded-md"
+          />
+        </div>
+
+        {previewImages.length > 0 && (
+          <div className="flex gap-4 flex-wrap">
+            {previewImages.map((preview) => (
+              <img
+                key={preview.id}
+                src={preview.url}
+                alt={`Vista previa ${preview.id}`}
+                className="w-24 h-24 object-contain aspect-square rounded-md border"
+              />
+            ))}
+          </div>
+        )}
+
+        {error && <p className="text-red-500">{error}</p>}
         <input
           className="border w-full py-2 px-4 rounded-md"
           type="text"
@@ -128,6 +239,14 @@ function App() {
             name="sku"
             placeholder="SKU del Producto"
             value={formData.sku}
+            onChange={handleChange}
+          />
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            name="upc"
+            placeholder="UPC del Producto"
+            value={formData.upc}
             onChange={handleChange}
           />
         </div>
@@ -161,13 +280,31 @@ function App() {
             }))
           }
         />
-        <Autocomplete
-          onSelect={(key) => setFormData((prev) => ({ ...prev, brand: key }))}
+        <select
+          className="border w-full py-2 px-4 rounded-md"
+          name="brand"
+          value={formData.brand}
+          onChange={handleChange}
         >
-          <AutocompleteItem key="Hypergear">Hypergear</AutocompleteItem>
-          <AutocompleteItem key="Naztech">Naztech</AutocompleteItem>
-          <AutocompleteItem key="PowerPeak">PowerPeak</AutocompleteItem>
-        </Autocomplete>
+          <option value="" disabled>
+            Selecciona una marca
+          </option>
+          <option value="Hypergear">Hypergear</option>
+          <option value="Naztech">Naztech</option>
+          <option value="PowerPeak">PowerPeak</option>
+          <option value="Krieg">Krieg</option>
+          <option value="Deken">Deken</option>
+          <option value="Appacs">Appacs</option>
+          <option value="USG">USG</option>
+          <option value="XBase">XBase</option>
+          <option value="Ghostek">Ghostek</option>
+          <option value="Ghostek">Ghostek</option>
+          <option value="Imilab">Imilab</option>
+          <option value="Samsung">Samsung</option>
+          <option value="Apple">Apple</option>
+          <option value="Coast">Coast</option>
+          <option value="Rock Space">Rock Space</option>
+        </select>
         <input
           className="border w-full py-2 px-4 rounded-md"
           type="text"
@@ -176,15 +313,63 @@ function App() {
           value={formData.brandLogo}
           onChange={handleChange}
         />
+
+        {/* Especificaciones dinámicas */}
         <div>
-          <label className="font-[600]">Subir Imágenes del Producto</label>
-          <input
-            type="file"
-            multiple
-            onChange={handleImageChange}
-            className="border w-full py-2 px-4 rounded-md"
-          />
+          <h3 className="font-semibold">Especificaciones</h3>
+          {specifications.map((spec, index) => (
+            <div key={index} className="flex gap-2 mb-2">
+              <input
+                className="border px-4 py-2 rounded-md w-1/2"
+                placeholder="Nombre de la especificación"
+                value={spec.key}
+                onChange={(e) => handleSpecificationChange(index, "key", e.target.value)}
+              />
+              <input
+                className="border px-4 py-2 rounded-md w-1/2"
+                placeholder="Valor de la especificación"
+                value={spec.value}
+                onChange={(e) => handleSpecificationChange(index, "value", e.target.value)}
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            className="bg-gray-300 py-2 px-4 rounded-md"
+            onClick={handleAddSpecification}
+          >
+            Agregar Especificación
+          </button>
         </div>
+
+        {/* Secciones dinámicas */}
+        <div>
+          <h3 className="font-semibold">Secciones</h3>
+          {sections.map((section, index) => (
+            <div key={index} className="flex gap-2 mb-2">
+              <input
+                className="border px-4 py-2 rounded-md w-1/2"
+                placeholder="Título de la sección"
+                value={section.title}
+                onChange={(e) => handleSectionChange(index, "title", e.target.value)}
+              />
+              <input
+                className="border px-4 py-2 rounded-md w-1/2"
+                placeholder="URL de la imagen de la sección"
+                value={section.image}
+                onChange={(e) => handleSectionChange(index, "image", e.target.value)}
+              />
+            </div>
+          ))}
+          <button
+            type="button"
+            className="bg-gray-300 py-2 px-4 rounded-md"
+            onClick={handleAddSection}
+          >
+            Agregar Sección
+          </button>
+        </div>
+
         <button
           type="submit"
           className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
