@@ -15,6 +15,8 @@ function App() {
     categories: [],
     brand: "",
     brandLogo: "",
+    modelId: "", // Nuevo campo modelId
+    stock: "", // Nuevo campo stock
   });
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -35,6 +37,7 @@ function App() {
   };
 
   const handleImageChange = (e) => {
+    console.log('Archivos seleccionados:', files);
     const files = Array.from(e.target.files);
 
     const orderedFiles = files.map((file, index) => ({
@@ -108,6 +111,7 @@ function App() {
   };
 
   const handleSubmit = async (e) => {
+    console.log(formData);
     e.preventDefault();
 
     if (!validateForm()) {
@@ -135,6 +139,8 @@ function App() {
         sku: formData.sku,
         upc: formData.upc,
         slug: formData.slug,
+        modelId: formData.modelId, // Incluye el modelId si es necesario
+        stock: formData.stock.trim() !== "" && parseInt(formData.stock, 10) > 0, // True si el stock > 0, False si no
         extradata: {
           especificaciones: Object.fromEntries(
             specifications.map((spec) => [spec.key, spec.value])
@@ -159,6 +165,8 @@ function App() {
         categories: [],
         brand: "",
         brandLogo: "",
+        modelId: "",
+        stock: "",
       });
       setImageFiles([]);
       setPreviewImages([]);
@@ -217,6 +225,7 @@ function App() {
         )}
 
         {error && <p className="text-red-500">{error}</p>}
+
         <input
           className="border w-full py-2 px-4 rounded-md"
           type="text"
@@ -297,7 +306,6 @@ function App() {
           <option value="Appacs">Appacs</option>
           <option value="USG">USG</option>
           <option value="XBase">XBase</option>
-          <option value="Ghostek">Ghostek</option>
           <option value="Ghostek">Ghostek</option>
           <option value="Imilab">Imilab</option>
           <option value="Samsung">Samsung</option>
