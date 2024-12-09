@@ -9,42 +9,39 @@ function App() {
     description: "",
     sku: "",
     upc: "",
-    slug: "", // Nuevo campo slug
+    slug: "",
     detailPrice: "",
     wholesalePrice: "",
     categories: [],
     brand: "",
     brandLogo: "",
     modelId: "",
-    stock: "true", // Nuevo campo stock con valor inicial como true
+    stock: "true",
   });
 
   const [imageFiles, setImageFiles] = useState([]);
   const [previewImages, setPreviewImages] = useState([]);
   const [error, setError] = useState("");
-
   const [specifications, setSpecifications] = useState([{ key: "", value: "" }]);
-  const [sections, setSections] = useState([{ title: "", image: "" }]);
+  const [sections, setSections] = useState([
+    { id: "seccion_01", title: "", imageUrl: "" },
+    { id: "seccion_02", title: "", imageUrl: "" },
+  ]);
+  const [fichaDescriptiva, setFichaDescriptiva] = useState({
+    title: "",
+    description: "",
+    image: "",
+  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
-
-    const orderedFiles = files.map((file, index) => ({
-      file,
-      order: index,
-    }));
-
+    const orderedFiles = files.map((file, index) => ({ file, order: index }));
     setImageFiles(orderedFiles);
-
     const previews = orderedFiles.map(({ file }) => ({
       id: file.name,
       url: URL.createObjectURL(file),
@@ -58,7 +55,7 @@ function App() {
       description,
       sku,
       upc,
-      slug, // Validación para slug
+      slug,
       detailPrice,
       wholesalePrice,
       categories,
@@ -71,7 +68,7 @@ function App() {
       !description.trim() ||
       !sku.trim() ||
       !upc.trim() ||
-      !slug.trim() || // Validación para slug
+      !slug.trim() ||
       !detailPrice.trim() ||
       !wholesalePrice.trim() ||
       !categories.length ||
@@ -89,32 +86,23 @@ function App() {
 
   const uploadImagesToStorage = async (sku) => {
     const uploadedImages = {};
-
     for (let i = 0; i < imageFiles.length; i++) {
       const { file, order } = imageFiles[i];
       const imageIndex = order + 1;
-
       const imageRef = ref(storage, `productos/${formData.brand}/${sku}/${sku}_0${imageIndex}`);
-
       await uploadBytes(imageRef, file);
       const imageUrl = await getDownloadURL(imageRef);
-
       uploadedImages[`imagen_0${imageIndex}`] = {
         id: `${sku}_0${imageIndex}`,
         img: imageUrl,
       };
     }
-
     return uploadedImages;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log(imageFiles)
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       const uploadedImages = await uploadImagesToStorage(formData.sku);
@@ -144,36 +132,58 @@ function App() {
             specifications.map((spec) => [spec.key, spec.value])
           ),
         },
-        secciones: sections.map((section) => ({
-          title: section.title,
-          image: section.image,
-        })),
+        secciones: {
+          seccion_01: {
+            title: sections[0].title,
+            imageUrl: sections[0].imageUrl,
+          },
+          seccion_02: {
+            title: sections[1].title,
+            imageUrl: sections[1].imageUrl,
+          },
+          ficha_descriptiva: {
+            ficha_title: fichaDescriptiva.title,
+            ficha_description: fichaDescriptiva.description,
+            ficha_image: fichaDescriptiva.image,
+          },
+        },
       });
 
       alert("¡Producto subido con éxito!");
-
-      setFormData({
-        productName: "",
-        description: "",
-        sku: "",
-        upc: "",
-        slug: "",
-        detailPrice: "",
-        wholesalePrice: "",
-        categories: [],
-        brand: "",
-        brandLogo: "",
-        modelId: "",
-        stock: "true",
-      });
-      setImageFiles([]);
-      setPreviewImages([]);
-      setSpecifications([{ key: "", value: "" }]);
-      setSections([{ title: "", image: "" }]);
+      resetForm();
     } catch (error) {
       console.error("Error subiendo producto:", error);
       alert("Hubo un error al subir el producto.");
     }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      productName: "",
+      description: "",
+      sku: "",
+      upc: "",
+      slug: "",
+      detailPrice: "",
+      wholesalePrice: "",
+      categories: [],
+      brand: "",
+      brandLogo: "",
+      modelId: "",
+      stock: "true",
+    });
+    setImageFiles([]);
+    setPreviewImages([]);
+    setSpecifications([{ key: "", value: "" }]);
+    setSections([
+      { id: "seccion_01", title: "", imageUrl: "" },
+      { id: "seccion_02", title: "", imageUrl: "" },
+    ]);
+    setFichaDescriptiva({
+      title: "",
+      description: "",
+      image: "",
+    });
   };
 
   const handleAddSpecification = () => {
@@ -186,24 +196,32 @@ function App() {
     setSpecifications(updatedSpecs);
   };
 
-  const handleAddSection = () => {
-    setSections([...sections, { title: "", image: "" }]);
-  };
-
   const handleSectionChange = (index, field, value) => {
     const updatedSections = [...sections];
     updatedSections[index][field] = value;
     setSections(updatedSections);
   };
 
+  const handleFichaDescriptivaChange = (field, value) => {
+    setFichaDescriptiva((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddSection = () => {
+    setSections([
+      ...sections,
+      { id: `seccion_${sections.length + 1}`, title: "", imageUrl: "" },
+    ]);
+  };
+
   return (
     <div className="App">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-[800px]">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-[800px] mx-auto">
         <div>
-          <label className="font-[600]">Subir Imágenes del Producto</label>
+          <label className="font-semibold">Subir Imágenes del Producto</label>
           <input
             type="file"
             multiple
+            accept="image/*"
             onChange={handleImageChange}
             className="border w-full py-2 px-4 rounded-md"
           />
@@ -262,7 +280,7 @@ function App() {
         <div className="flex flex-col md:flex-row gap-4">
           <input
             className="border w-full py-2 px-4 rounded-md"
-            type="text"
+            type="number"
             name="detailPrice"
             placeholder="Precio de Detalle"
             value={formData.detailPrice}
@@ -270,7 +288,7 @@ function App() {
           />
           <input
             className="border w-full py-2 px-4 rounded-md"
-            type="text"
+            type="number"
             name="wholesalePrice"
             placeholder="Precio de Mayoreo"
             value={formData.wholesalePrice}
@@ -325,7 +343,6 @@ function App() {
           onChange={handleChange}
         />
 
-        {/* Campo slug */}
         <input
           className="border w-full py-2 px-4 rounded-md"
           type="text"
@@ -335,22 +352,19 @@ function App() {
           onChange={handleChange}
         />
 
-        {/* Campo stock */}
         <div className="flex gap-4 items-center">
           <label className="font-semibold">¿Hay Stock?</label>
-          
           <select
             name="stock"
             value={formData.stock}
             onChange={handleChange}
-              className="border w-[80px] py-2 px-4 rounded-md"
+            className="border w-[80px] py-2 px-4 rounded-md"
           >
-            <option value="true">Si</option>
+            <option value="true">Sí</option>
             <option value="false">No</option>
           </select>
         </div>
 
-        {/* Especificaciones dinámicas */}
         <div>
           <h3 className="font-semibold">Especificaciones</h3>
           {specifications.map((spec, index) => (
@@ -378,7 +392,30 @@ function App() {
           </button>
         </div>
 
-        {/* Secciones dinámicas */}
+        <div className="flex flex-col gap-2">
+          <h3 className="font-semibold">Ficha Descriptiva</h3>
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            placeholder="Título de la ficha descriptiva"
+            value={fichaDescriptiva.title}
+            onChange={(e) => handleFichaDescriptivaChange("title", e.target.value)}
+          />
+          <textarea
+            className="border w-full py-2 px-4 rounded-md"
+            placeholder="Descripción de la ficha descriptiva"
+            value={fichaDescriptiva.description}
+            onChange={(e) => handleFichaDescriptivaChange("description", e.target.value)}
+          ></textarea>
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            placeholder="URL de la imagen"
+            value={fichaDescriptiva.image}
+            onChange={(e) => handleFichaDescriptivaChange("image", e.target.value)}
+          />
+        </div>
+
         <div>
           <h3 className="font-semibold">Secciones</h3>
           {sections.map((section, index) => (
@@ -392,8 +429,8 @@ function App() {
               <input
                 className="border px-4 py-2 rounded-md w-1/2"
                 placeholder="URL de la imagen de la sección"
-                value={section.image}
-                onChange={(e) => handleSectionChange(index, "image", e.target.value)}
+                value={section.imageUrl}
+                onChange={(e) => handleSectionChange(index, "imageUrl", e.target.value)}
               />
             </div>
           ))}
@@ -414,7 +451,6 @@ function App() {
         </button>
       </form>
     </div>
-
   );
 }
 
