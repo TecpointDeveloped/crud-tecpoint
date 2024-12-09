@@ -9,14 +9,14 @@ function App() {
     description: "",
     sku: "",
     upc: "",
-    slug: "",
+    slug: "", // Nuevo campo slug
     detailPrice: "",
     wholesalePrice: "",
     categories: [],
     brand: "",
     brandLogo: "",
-    modelId: "", // Nuevo campo modelId
-    stock: "", // Nuevo campo stock
+    modelId: "",
+    stock: "true", // Nuevo campo stock con valor inicial como true
   });
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -24,7 +24,6 @@ function App() {
   const [error, setError] = useState("");
 
   const [specifications, setSpecifications] = useState([{ key: "", value: "" }]);
-
   const [sections, setSections] = useState([{ title: "", image: "" }]);
 
   const handleChange = (e) => {
@@ -37,7 +36,6 @@ function App() {
   };
 
   const handleImageChange = (e) => {
-    console.log('Archivos seleccionados:', files);
     const files = Array.from(e.target.files);
 
     const orderedFiles = files.map((file, index) => ({
@@ -60,7 +58,7 @@ function App() {
       description,
       sku,
       upc,
-      slug,
+      slug, // Validación para slug
       detailPrice,
       wholesalePrice,
       categories,
@@ -73,7 +71,7 @@ function App() {
       !description.trim() ||
       !sku.trim() ||
       !upc.trim() ||
-      !slug.trim() ||
+      !slug.trim() || // Validación para slug
       !detailPrice.trim() ||
       !wholesalePrice.trim() ||
       !categories.length ||
@@ -111,8 +109,8 @@ function App() {
   };
 
   const handleSubmit = async (e) => {
-    console.log(formData);
     e.preventDefault();
+    console.log(imageFiles)
 
     if (!validateForm()) {
       return;
@@ -137,11 +135,11 @@ function App() {
         },
         producto: formData.productName,
         sku: formData.sku,
-        upc: formData.upc,
         slug: formData.slug,
-        modelId: formData.modelId, // Incluye el modelId si es necesario
-        stock: formData.stock.trim() !== "" && parseInt(formData.stock, 10) > 0, // True si el stock > 0, False si no
         extradata: {
+          modelId: formData.modelId,
+          stock: formData.stock === "true",
+          upc: formData.upc,
           especificaciones: Object.fromEntries(
             specifications.map((spec) => [spec.key, spec.value])
           ),
@@ -166,7 +164,7 @@ function App() {
         brand: "",
         brandLogo: "",
         modelId: "",
-        stock: "",
+        stock: "true",
       });
       setImageFiles([]);
       setPreviewImages([]);
@@ -241,6 +239,7 @@ function App() {
           value={formData.description}
           onChange={handleChange}
         ></textarea>
+
         <div className="flex flex-col md:flex-row gap-4">
           <input
             className="border w-full py-2 px-4 rounded-md"
@@ -259,6 +258,7 @@ function App() {
             onChange={handleChange}
           />
         </div>
+
         <div className="flex flex-col md:flex-row gap-4">
           <input
             className="border w-full py-2 px-4 rounded-md"
@@ -277,6 +277,7 @@ function App() {
             onChange={handleChange}
           />
         </div>
+
         <input
           className="border w-full py-2 px-4 rounded-md"
           type="text"
@@ -289,6 +290,7 @@ function App() {
             }))
           }
         />
+
         <select
           className="border w-full py-2 px-4 rounded-md"
           name="brand"
@@ -313,6 +315,7 @@ function App() {
           <option value="Coast">Coast</option>
           <option value="Rock Space">Rock Space</option>
         </select>
+
         <input
           className="border w-full py-2 px-4 rounded-md"
           type="text"
@@ -321,6 +324,31 @@ function App() {
           value={formData.brandLogo}
           onChange={handleChange}
         />
+
+        {/* Campo slug */}
+        <input
+          className="border w-full py-2 px-4 rounded-md"
+          type="text"
+          name="slug"
+          placeholder="Slug del Producto"
+          value={formData.slug}
+          onChange={handleChange}
+        />
+
+        {/* Campo stock */}
+        <div className="flex gap-4 items-center">
+          <label className="font-semibold">¿Hay Stock?</label>
+          
+          <select
+            name="stock"
+            value={formData.stock}
+            onChange={handleChange}
+              className="border w-[80px] py-2 px-4 rounded-md"
+          >
+            <option value="true">Si</option>
+            <option value="false">No</option>
+          </select>
+        </div>
 
         {/* Especificaciones dinámicas */}
         <div>
@@ -386,6 +414,7 @@ function App() {
         </button>
       </form>
     </div>
+
   );
 }
 
