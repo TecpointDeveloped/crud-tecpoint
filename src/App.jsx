@@ -14,9 +14,9 @@ function App() {
     wholesalePrice: "",
     categories: [],
     brand: "",
-    brandLogo: "",
     modelId: "",
     stock: "true",
+    SubCategorias: [],
   });
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -60,7 +60,7 @@ function App() {
       wholesalePrice,
       categories,
       brand,
-      brandLogo,
+      SubCategorias
     } = formData;
 
     if (
@@ -73,7 +73,6 @@ function App() {
       !wholesalePrice.trim() ||
       !categories.length ||
       !brand.trim() ||
-      !brandLogo.trim() ||
       !imageFiles.length
     ) {
       setError("Por favor, completa todos los campos y selecciona al menos una imagen.");
@@ -92,7 +91,7 @@ function App() {
       const imageRef = ref(storage, `productos/${formData.brand}/${sku}/${sku}_0${imageIndex}`);
       await uploadBytes(imageRef, file);
       const imageUrl = await getDownloadURL(imageRef);
-      uploadedImages[`imagen_0${imageIndex}`] = {
+      uploadedImages[`imagen_${imageIndex}`] = {
         id: `${sku}_0${imageIndex}`,
         img: imageUrl,
       };
@@ -109,11 +108,11 @@ function App() {
 
       await addDoc(collection(db, "Products"), {
         categorias: formData.categories,
+        SubCategorias: formData.SubCategorias,
         descripcion: formData.description,
         fecha_agregado: new Date().toISOString(),
         imagenes: uploadedImages,
         marca_producto: {
-          logo: formData.brandLogo,
           marca: formData.brand,
         },
         permalink: `https://tecpoint.ws/shop/${formData.slug}`,
@@ -125,9 +124,12 @@ function App() {
         sku: formData.sku,
         slug: formData.slug,
         extradata: {
+          color: '',
+          discount: 0,
           modelId: formData.modelId,
           stock: formData.stock === "true",
           upc: formData.upc,
+          tags: formData.SeoTags,
           especificaciones: Object.fromEntries(
             specifications.map((spec) => [spec.key, spec.value])
           ),
@@ -296,18 +298,46 @@ function App() {
           />
         </div>
 
-        <input
-          className="border w-full py-2 px-4 rounded-md"
-          type="text"
-          name="categories"
-          placeholder="Categorías (separadas por comas)"
-          onChange={(e) =>
-            setFormData((prev) => ({
-              ...prev,
-              categories: e.target.value.split(",").map((cat) => cat.trim()),
-            }))
-          }
-        />
+        <div className="flex flex-col md:flex-row gap-4">
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            name="categories"
+            placeholder="Categorías (separadas por comas)"
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                categories: e.target.value.split(",").map((cat) => cat.trim()),
+              }))
+            }
+          />
+
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            name="SeoTags"
+            placeholder="Tags (separadas por comas)"
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                SeoTags: e.target.value.split(",").map((tag) => tag.trim()),
+              }))
+            }
+          />
+
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            name="SubCategorias"
+            placeholder="Subcategorías (separadas por comas)"
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                SubCategorias: e.target.value.split(",").map((subCat) => subCat.trim()),
+              }))
+            }
+          />
+        </div>
 
         <select
           className="border w-full py-2 px-4 rounded-md"
@@ -333,15 +363,6 @@ function App() {
           <option value="Coast">Coast</option>
           <option value="Rock Space">Rock Space</option>
         </select>
-
-        <input
-          className="border w-full py-2 px-4 rounded-md"
-          type="text"
-          name="brandLogo"
-          placeholder="URL del logo de la marca"
-          value={formData.brandLogo}
-          onChange={handleChange}
-        />
 
         <input
           className="border w-full py-2 px-4 rounded-md"
@@ -426,12 +447,18 @@ function App() {
                 value={section.title}
                 onChange={(e) => handleSectionChange(index, "title", e.target.value)}
               />
-              <input
-                className="border px-4 py-2 rounded-md w-1/2"
-                placeholder="URL de la imagen de la sección"
-                value={section.imageUrl}
-                onChange={(e) => handleSectionChange(index, "imageUrl", e.target.value)}
-              />
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files[0];
+                if (file) {
+                  const imageUrl = URL.createObjectURL(file);
+                  handleSectionChange(index, "imageUrl", imageUrl);
+                }
+              }}
+              className="border px-4 py-2 rounded-md w-1/2"
+            />
             </div>
           ))}
           <button
