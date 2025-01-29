@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { db, storage } from "./firebaseConfig";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 function App() {
@@ -91,7 +91,7 @@ function App() {
       const imageRef = ref(storage, `productos/${formData.brand}/${sku}/${sku}_0${imageIndex}`);
       await uploadBytes(imageRef, file);
       const imageUrl = await getDownloadURL(imageRef);
-      uploadedImages[`imagen_${imageIndex}`] = {
+      uploadedImages[`imagen_0${imageIndex}`] = {
         id: `${sku}_0${imageIndex}`,
         img: imageUrl,
       };
@@ -137,11 +137,11 @@ function App() {
         secciones: {
           seccion_01: {
             title: sections[0].title,
-            imageUrl: sections[0].imageUrl,
+            imagenUrl: sections[0].imageUrl,
           },
           seccion_02: {
             title: sections[1].title,
-            imageUrl: sections[1].imageUrl,
+            imagenUrl: sections[1].imageUrl,
           },
           ficha_descriptiva: {
             ficha_title: fichaDescriptiva.title,
@@ -152,7 +152,7 @@ function App() {
       });
 
       alert("¡Producto subido con éxito!");
-      resetForm();
+      // resetForm();
     } catch (error) {
       console.error("Error subiendo producto:", error);
       alert("Hubo un error al subir el producto.");
@@ -198,9 +198,16 @@ function App() {
     setSpecifications(updatedSpecs);
   };
 
-  const handleSectionChange = (index, field, value) => {
+  const handleSectionChange = async (index, field, value) => {
     const updatedSections = [...sections];
-    updatedSections[index][field] = value;
+    if (field === "imageUrl" && value instanceof File) {
+      const imageRef = ref(storage, `secciones/${formData.sku}/${value.name}`);
+      await uploadBytes(imageRef, value);
+      const imageUrl = await getDownloadURL(imageRef);
+      updatedSections[index][field] = imageUrl;
+    } else {
+      updatedSections[index][field] = value;
+    }
     setSections(updatedSections);
   };
 
@@ -447,18 +454,12 @@ function App() {
                 value={section.title}
                 onChange={(e) => handleSectionChange(index, "title", e.target.value)}
               />
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) {
-                  const imageUrl = URL.createObjectURL(file);
-                  handleSectionChange(index, "imageUrl", imageUrl);
-                }
-              }}
-              className="border px-4 py-2 rounded-md w-1/2"
-            />
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleSectionChange(index, "imageUrl", e.target.files[0])}
+                className="border px-4 py-2 rounded-md w-1/2"
+              />
             </div>
           ))}
           <button
