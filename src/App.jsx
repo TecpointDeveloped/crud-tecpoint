@@ -101,7 +101,7 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    // if (!validateForm()) return;
 
     try {
       const uploadedImages = await uploadImagesToStorage(formData.sku);
