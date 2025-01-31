@@ -320,7 +320,7 @@ function App() {
           </option>
           <option value="Hypergear">Hypergear</option>
           <option value="Naztech">Naztech</option>
-          <option value="PowerPeak">PowerPeak</option>
+          <option value="Powerpeak">PowerPeak</option>
           <option value="Krieg">Krieg</option>
           <option value="Deken">Deken</option>
           <option value="Appacs">Appacs</option>
