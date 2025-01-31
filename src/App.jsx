@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { db, storage } from "./firebaseConfig";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 function App() {
@@ -14,9 +14,9 @@ function App() {
     wholesalePrice: "",
     categories: [],
     brand: "",
-    brandLogo: "",
     modelId: "",
     stock: "true",
+    SubCategorias: [],
   });
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -60,7 +60,7 @@ function App() {
       wholesalePrice,
       categories,
       brand,
-      brandLogo,
+      SubCategorias
     } = formData;
 
     if (
@@ -73,7 +73,6 @@ function App() {
       !wholesalePrice.trim() ||
       !categories.length ||
       !brand.trim() ||
-      !brandLogo.trim() ||
       !imageFiles.length
     ) {
       setError("Por favor, completa todos los campos y selecciona al menos una imagen.");
@@ -102,18 +101,18 @@ function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    // if (!validateForm()) return;
 
     try {
       const uploadedImages = await uploadImagesToStorage(formData.sku);
 
       await addDoc(collection(db, "Products"), {
         categorias: formData.categories,
+        SubCategorias: formData.SubCategorias,
         descripcion: formData.description,
         fecha_agregado: new Date().toISOString(),
         imagenes: uploadedImages,
         marca_producto: {
-          logo: formData.brandLogo,
           marca: formData.brand,
         },
         permalink: `https://tecpoint.ws/shop/${formData.slug}`,
@@ -125,9 +124,12 @@ function App() {
         sku: formData.sku,
         slug: formData.slug,
         extradata: {
+          color: '',
+          discount: 0,
           modelId: formData.modelId,
           stock: formData.stock === "true",
           upc: formData.upc,
+          tags: formData.SeoTags,
           especificaciones: Object.fromEntries(
             specifications.map((spec) => [spec.key, spec.value])
           ),
@@ -135,11 +137,11 @@ function App() {
         secciones: {
           seccion_01: {
             title: sections[0].title,
-            imageUrl: sections[0].imageUrl,
+            imagenUrl: sections[0].imageUrl,
           },
           seccion_02: {
             title: sections[1].title,
-            imageUrl: sections[1].imageUrl,
+            imagenUrl: sections[1].imageUrl,
           },
           ficha_descriptiva: {
             ficha_title: fichaDescriptiva.title,
@@ -150,7 +152,7 @@ function App() {
       });
 
       alert("¡Producto subido con éxito!");
-      resetForm();
+      // resetForm();
     } catch (error) {
       console.error("Error subiendo producto:", error);
       alert("Hubo un error al subir el producto.");
@@ -196,9 +198,16 @@ function App() {
     setSpecifications(updatedSpecs);
   };
 
-  const handleSectionChange = (index, field, value) => {
+  const handleSectionChange = async (index, field, value) => {
     const updatedSections = [...sections];
-    updatedSections[index][field] = value;
+    if (field === "imageUrl" && value instanceof File) {
+      const imageRef = ref(storage, `secciones/${formData.sku}/${value.name}`);
+      await uploadBytes(imageRef, value);
+      const imageUrl = await getDownloadURL(imageRef);
+      updatedSections[index][field] = imageUrl;
+    } else {
+      updatedSections[index][field] = value;
+    }
     setSections(updatedSections);
   };
 
@@ -296,18 +305,46 @@ function App() {
           />
         </div>
 
-        <input
-          className="border w-full py-2 px-4 rounded-md"
-          type="text"
-          name="categories"
-          placeholder="Categorías (separadas por comas)"
-          onChange={(e) =>
-            setFormData((prev) => ({
-              ...prev,
-              categories: e.target.value.split(",").map((cat) => cat.trim()),
-            }))
-          }
-        />
+        <div className="flex flex-col md:flex-row gap-4">
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            name="categories"
+            placeholder="Categorías (separadas por comas)"
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                categories: e.target.value.split(",").map((cat) => cat.trim()),
+              }))
+            }
+          />
+
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            name="SeoTags"
+            placeholder="Tags (separadas por comas)"
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                SeoTags: e.target.value.split(",").map((tag) => tag.trim()),
+              }))
+            }
+          />
+
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            name="SubCategorias"
+            placeholder="Subcategorías (separadas por comas)"
+            onChange={(e) =>
+              setFormData((prev) => ({
+                ...prev,
+                SubCategorias: e.target.value.split(",").map((subCat) => subCat.trim()),
+              }))
+            }
+          />
+        </div>
 
         <select
           className="border w-full py-2 px-4 rounded-md"
@@ -333,15 +370,6 @@ function App() {
           <option value="Coast">Coast</option>
           <option value="Rock Space">Rock Space</option>
         </select>
-
-        <input
-          className="border w-full py-2 px-4 rounded-md"
-          type="text"
-          name="brandLogo"
-          placeholder="URL del logo de la marca"
-          value={formData.brandLogo}
-          onChange={handleChange}
-        />
 
         <input
           className="border w-full py-2 px-4 rounded-md"
@@ -427,10 +455,10 @@ function App() {
                 onChange={(e) => handleSectionChange(index, "title", e.target.value)}
               />
               <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleSectionChange(index, "imageUrl", e.target.files[0])}
                 className="border px-4 py-2 rounded-md w-1/2"
-                placeholder="URL de la imagen de la sección"
-                value={section.imageUrl}
-                onChange={(e) => handleSectionChange(index, "imageUrl", e.target.value)}
               />
             </div>
           ))}
