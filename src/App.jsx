@@ -152,7 +152,7 @@ function App() {
       });
 
       alert("¡Producto subido con éxito!");
-      // resetForm();
+      resetForm();
     } catch (error) {
       console.error("Error subiendo producto:", error);
       alert("Hubo un error al subir el producto.");
