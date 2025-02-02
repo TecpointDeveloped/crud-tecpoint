@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../firebaseConfig";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 function Update() {
   const [products, setProducts] = useState([]);
@@ -53,14 +54,26 @@ function Update() {
       setUpdatedData({ ...updatedData, [name]: finalValue });
     }
   };
-
   const handleSaveChanges = async () => {
     if (!selectedProduct) {
       console.error("No product selected");
-    };
+      return;
+    }
 
     const productRef = doc(db, "Products", selectedProduct.id);
+    const storage = getStorage();
+    const uploadPromises = imageFiles.map(async (image, index) => {
+      if (image.file) {
+        const storageRef = ref(storage, `productos/${selectedProduct.marca_producto.marca}/${selectedProduct.sku}/${image.file.name}_${index + 1}`);
+        await uploadBytes(storageRef, image.file);
+        const url = await getDownloadURL(storageRef);
+        return { img: url };
+      }
+      return null;
+    });
+
     try {
+      const uploadedImages = await Promise.all(uploadPromises);
       const updatedProductData = {
         ...updatedData,
         precio: {
@@ -71,9 +84,10 @@ function Update() {
           stock: updatedData.extradata?.stock || false,
           especificaciones: updatedData.extradata?.especificaciones || "",
         },
-        imagenes: {
-          imagen_01: updatedData.imagenes?.imagen_01 || { img: "" },
-        },
+        imagenes: uploadedImages.reduce((acc, img, index) => {
+          if (img) acc[`imagen_0${index + 1}`] = { ...img, id: `${updatedData.sku}_0${index + 1}` };
+          return acc;
+        }, {}),
         marca_producto: {
           marca: updatedData.marca_producto?.marca || "",
         },
@@ -126,6 +140,7 @@ function Update() {
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="bg-white p-6 rounded-lg shadow-lg w-full h-full overflow-hidden overflow-y-scroll relative">
             <h2 className="text-xl font-bold mb-4">Editar Producto</h2>
+            <h1>{updatedData.id}</h1>
 
             <div className="flex flex-col gap-2">
               <section className="flex gap-4 max-w-[1200px]">
@@ -136,16 +151,15 @@ function Update() {
                   </picture>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold">Subir Imágenes:</label>
+                    {/* <label className="text-sm font-semibold">Subir Imágenes:</label>
                     <input
                       type="file"
                       multiple
                       onChange={(e) => setImageFiles(Array.from(e.target.files).map((file, index) => ({ file, order: index })))}
                       className="border p-2 rounded"
-                    />
+                    /> */}
 
                     <div className="flex gap-2">
-
                       <button
                         onClick={() => setImageFiles([...imageFiles, { file: null, order: imageFiles.length }])}
                         className="mt-2 bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
@@ -177,6 +191,7 @@ function Update() {
                       </div>
                     ))}
                   </div>
+
                 </section>
 
                 <section className="flex flex-col gap-4 flex-1">
