@@ -2,10 +2,9 @@ import Create from "./pages/Create";
 import Update from "./pages/Update";
 
 function App() {
-
     return (
     <div>
-      {/* <Create /> */}
+      <Create />
       <Update />
     </div>
   );
