@@ -369,6 +369,7 @@ function Create() {
           <option value="Apple">Apple</option>
           <option value="Coast">Coast</option>
           <option value="Rock Space">Rock Space</option>
+          <option value="XO">XO</option>
         </select>
 
         <input
