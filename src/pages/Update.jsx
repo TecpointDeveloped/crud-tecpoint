@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { db } from "../firebaseConfig";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 function Update() {
   const [products, setProducts] = useState([]);
@@ -54,6 +54,7 @@ function Update() {
       setUpdatedData({ ...updatedData, [name]: finalValue });
     }
   };
+
   const handleSaveChanges = async () => {
     if (!selectedProduct) {
       console.error("No product selected");
@@ -74,6 +75,14 @@ function Update() {
 
     try {
       const uploadedImages = await Promise.all(uploadPromises);
+
+      // Mantener las imágenes existentes si no se seleccionan nuevas
+      const existingImages = selectedProduct.imagenes || {};
+      const newImages = uploadedImages.reduce((acc, img, index) => {
+        if (img) acc[`imagen_0${index + 1}`] = { ...img, id: `${updatedData.sku}_0${index + 1}` };
+        return acc;
+      }, {});
+
       const updatedProductData = {
         ...updatedData,
         precio: {
@@ -84,14 +93,12 @@ function Update() {
           stock: updatedData.extradata?.stock || false,
           especificaciones: updatedData.extradata?.especificaciones || "",
         },
-        imagenes: uploadedImages.reduce((acc, img, index) => {
-          if (img) acc[`imagen_0${index + 1}`] = { ...img, id: `${updatedData.sku}_0${index + 1}` };
-          return acc;
-        }, {}),
+        imagenes: { ...existingImages, ...newImages }, // Combinar imágenes existentes con nuevas
         marca_producto: {
           marca: updatedData.marca_producto?.marca || "",
         },
       };
+
       await updateDoc(productRef, updatedProductData);
       setProducts((prev) =>
         prev.map((p) => (p.id === selectedProduct.id ? { ...updatedProductData, id: selectedProduct.id } : p))
@@ -151,14 +158,6 @@ function Update() {
                   </picture>
 
                   <div className="flex flex-col gap-2">
-                    {/* <label className="text-sm font-semibold">Subir Imágenes:</label>
-                    <input
-                      type="file"
-                      multiple
-                      onChange={(e) => setImageFiles(Array.from(e.target.files).map((file, index) => ({ file, order: index })))}
-                      className="border p-2 rounded"
-                    /> */}
-
                     <div className="flex gap-2">
                       <button
                         onClick={() => setImageFiles([...imageFiles, { file: null, order: imageFiles.length }])}
@@ -167,6 +166,38 @@ function Update() {
                         Agregar Imagen
                       </button>
                     </div>
+                    <section className="flex gap-4">
+                      {Object.keys(updatedData.imagenes || {}).map((key, index) => (
+                        <div key={key} className="flex flex-col items-center gap-2">
+                          <img
+                            src={updatedData.imagenes[key]?.img}
+                            alt={`Existing ${index}`}
+                            className="size-20 object-cover border rounded"
+                          />
+                          <button
+                            onClick={async () => {
+                              const storage = getStorage();
+                              const imageRef = ref(storage, updatedData.imagenes[key]?.img);
+                              try {
+                                await deleteObject(imageRef);
+                                setUpdatedData((prev) => {
+                                  const updatedImages = { ...prev.imagenes };
+                                  delete updatedImages[key];
+                                  return { ...prev, imagenes: updatedImages };
+                                });
+                                alert("Imagen eliminada correctamente");
+                              } catch (error) {
+                                console.error("Error eliminando la imagen:", error);
+                                alert("Error eliminando la imagen: " + error.message);
+                              }
+                            }}
+                            className="mt-2 bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      ))}
+                    </section>
                     {imageFiles.map((image, index) => (
                       <div key={index} className="flex flex-col items-center gap-2">
                         <input
@@ -325,7 +356,15 @@ function Update() {
 
             <div className="flex items-center justify-between absolute top-2 right-2 gap-2">
               <button
-                onClick={handleSaveChanges}
+                onClick={async () => {
+                  await handleSaveChanges();
+                  setUpdatedData({});
+                  setImageFiles([]);
+                  setUpdatedData((prev) => ({
+                    ...prev,
+                    imagenes: { ...selectedProduct.imagenes, ...updatedData.imagenes },
+                  }));
+                }}
                 className="bg-indigo-600 text-white px-3 py-1 rounded-full hover:bg-indigo-400"
               >
                 Actualizar
