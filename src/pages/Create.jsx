@@ -356,6 +356,7 @@ function Create() {
             Selecciona una marca
           </option>
           <option value="Hypergear">Hypergear</option>
+          <option value="Lagnsdom">Lagnsdom</option>
           <option value="Naztech">Naztech</option>
           <option value="Powerpeak">PowerPeak</option>
           <option value="Krieg">Krieg</option>
