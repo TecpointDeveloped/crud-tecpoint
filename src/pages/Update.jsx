@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { db } from "../firebaseConfig";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
@@ -241,7 +241,7 @@ function Update() {
                       value={updatedData.descripcion}
                       onChange={handleChange}
                       className="border p-2 rounded"
-                      plcaeholder="Descripción del Producto"
+                      placeholder="Descripción del Producto"
                     />
                   </div>
 

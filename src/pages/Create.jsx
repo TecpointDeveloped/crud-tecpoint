@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { db, storage } from "../firebaseConfig";
-import { collection, addDoc, doc } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 function Create() {
@@ -21,7 +21,7 @@ function Create() {
 
   const [imageFiles, setImageFiles] = useState([]);
   const [previewImages, setPreviewImages] = useState([]);
-  const [error, setError] = useState("");
+  const [error, ] = useState("");
   const [specifications, setSpecifications] = useState([{ key: "", value: "" }]);
   const [sections, setSections] = useState([
     { id: "seccion_01", title: "", imageUrl: "" },
@@ -49,39 +49,39 @@ function Create() {
     setPreviewImages(previews);
   };
 
-  const validateForm = () => {
-    const {
-      productName,
-      description,
-      sku,
-      upc,
-      slug,
-      detailPrice,
-      wholesalePrice,
-      categories,
-      brand,
-      SubCategorias
-    } = formData;
+  // const validateForm = () => {
+  //   const {
+  //     productName,
+  //     description,
+  //     sku,
+  //     upc,
+  //     slug,
+  //     detailPrice,
+  //     wholesalePrice,
+  //     categories,
+  //     brand,
+  //     SubCategorias
+  //   } = formData;
 
-    if (
-      !productName.trim() ||
-      !description.trim() ||
-      !sku.trim() ||
-      !upc.trim() ||
-      !slug.trim() ||
-      !detailPrice.trim() ||
-      !wholesalePrice.trim() ||
-      !categories.length ||
-      !brand.trim() ||
-      !imageFiles.length
-    ) {
-      setError("Por favor, completa todos los campos y selecciona al menos una imagen.");
-      return false;
-    }
+  //   if (
+  //     !productName.trim() ||
+  //     !description.trim() ||
+  //     !sku.trim() ||
+  //     !upc.trim() ||
+  //     !slug.trim() ||
+  //     !detailPrice.trim() ||
+  //     !wholesalePrice.trim() ||
+  //     !categories.length ||
+  //     !brand.trim() ||
+  //     !imageFiles.length
+  //   ) {
+  //     setError("Por favor, completa todos los campos y selecciona al menos una imagen.");
+  //     return false;
+  //   }
 
-    setError("");
-    return true;
-  };
+  //   setError("");
+  //   return true;
+  // };
 
   const uploadImagesToStorage = async (sku) => {
     const uploadedImages = {};
@@ -159,34 +159,34 @@ function Create() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
-      productName: "",
-      description: "",
-      sku: "",
-      upc: "",
-      slug: "",
-      detailPrice: "",
-      wholesalePrice: "",
-      categories: [],
-      brand: "",
-      brandLogo: "",
-      modelId: "",
-      stock: "true",
-    });
-    setImageFiles([]);
-    setPreviewImages([]);
-    setSpecifications([{ key: "", value: "" }]);
-    setSections([
-      { id: "seccion_01", title: "", imageUrl: "" },
-      { id: "seccion_02", title: "", imageUrl: "" },
-    ]);
-    setFichaDescriptiva({
-      title: "",
-      description: "",
-      image: "",
-    });
-  };
+  // const resetForm = () => {
+  //   setFormData({
+  //     productName: "",
+  //     description: "",
+  //     sku: "",
+  //     upc: "",
+  //     slug: "",
+  //     detailPrice: "",
+  //     wholesalePrice: "",
+  //     categories: [],
+  //     brand: "",
+  //     brandLogo: "",
+  //     modelId: "",
+  //     stock: "true",
+  //   });
+  //   setImageFiles([]);
+  //   setPreviewImages([]);
+  //   setSpecifications([{ key: "", value: "" }]);
+  //   setSections([
+  //     { id: "seccion_01", title: "", imageUrl: "" },
+  //     { id: "seccion_02", title: "", imageUrl: "" },
+  //   ]);
+  //   setFichaDescriptiva({
+  //     title: "",
+  //     description: "",
+  //     image: "",
+  //   });
+  // };
 
   const handleAddSpecification = () => {
     setSpecifications([...specifications, { key: "", value: "" }]);
@@ -356,7 +356,7 @@ function Create() {
             Selecciona una marca
           </option>
           <option value="Hypergear">Hypergear</option>
-          <option value="Lagnsdom">Lagnsdom</option>
+          <option value="Langsdom">Langsdom</option>
           <option value="Naztech">Naztech</option>
           <option value="Powerpeak">PowerPeak</option>
           <option value="Krieg">Krieg</option>
