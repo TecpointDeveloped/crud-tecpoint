@@ -21,7 +21,7 @@ function Create() {
 
   const [imageFiles, setImageFiles] = useState([]);
   const [previewImages, setPreviewImages] = useState([]);
-  const [error, ] = useState("");
+  const [error,] = useState("");
   const [specifications, setSpecifications] = useState([{ key: "", value: "" }]);
   const [sections, setSections] = useState([
     { id: "seccion_01", title: "", imageUrl: "" },
@@ -355,22 +355,23 @@ function Create() {
           <option value="" disabled>
             Selecciona una marca
           </option>
+          <option value="Appacs">Appacs</option>
+          <option value="Apple">Apple</option>
+          <option value="Coast">Coast</option>
+          <option value="Deken">Deken</option>
+          <option value="Ghostek">Ghostek</option>
+          <option value="Hoco">Hoco</option>
           <option value="Hypergear">Hypergear</option>
+          <option value="Imilab">Imilab</option>
+          <option value="Krieg">Krieg</option>
           <option value="Langsdom">Langsdom</option>
           <option value="Naztech">Naztech</option>
           <option value="Powerpeak">PowerPeak</option>
-          <option value="Krieg">Krieg</option>
-          <option value="Deken">Deken</option>
-          <option value="Appacs">Appacs</option>
-          <option value="USG">USG</option>
-          <option value="XBase">XBase</option>
-          <option value="Ghostek">Ghostek</option>
-          <option value="Imilab">Imilab</option>
-          <option value="Samsung">Samsung</option>
-          <option value="Apple">Apple</option>
-          <option value="Coast">Coast</option>
           <option value="Rock Space">Rock Space</option>
+          <option value="Samsung">Samsung</option>
+          <option value="USG">USG</option>
           <option value="XO">XO</option>
+          <option value="XBase">XBase</option>
         </select>
 
         <input
