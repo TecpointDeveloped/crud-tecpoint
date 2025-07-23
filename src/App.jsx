@@ -20,7 +20,7 @@ import { collection, getDocs } from 'firebase/firestore';
 
 import {
   Home, LayoutDashboard, TrendingUp, TrendingDown, Plus, Book, FileText, Type,
-  MoreHorizontal, PlusCircle, Pencil, LogOut, UserCircle2, Package, Tag, Users, ShieldCheck 
+  MoreHorizontal, PlusCircle, Pencil, LogOut, UserCircle2, Package, Tag, Users, ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
