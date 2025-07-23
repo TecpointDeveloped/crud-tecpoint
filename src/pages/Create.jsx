@@ -223,7 +223,7 @@ function Create() {
   };
 
   return (
-    <div className="App">
+    <div className="w-full">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-[800px] mx-auto">
         <div>
           <label className="font-semibold">Subir Imágenes del Producto</label>
