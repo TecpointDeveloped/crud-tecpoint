@@ -547,6 +547,7 @@ export default function Update() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [skuQuery, setSkuQuery] = useState("");
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -568,11 +569,27 @@ export default function Update() {
     );
   };
 
+  const filteredProducts = skuQuery.trim()
+    ? products.filter((p) => (p.sku || "").toLowerCase().includes(skuQuery.toLowerCase()))
+    : products;
+
   return (
     <div className="p-6 w-full">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center gap-4 mb-6">
         <h1 className="text-xl font-semibold text-gray-900">Productos</h1>
-        <span className="text-sm text-gray-400">{products.length} en total</span>
+        <div className="ml-auto flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Buscar por SKU"
+            value={skuQuery}
+            onChange={(e) => setSkuQuery(e.target.value)}
+            className="border p-2 rounded w-52 text-sm"
+          />
+          {skuQuery && (
+            <button onClick={() => setSkuQuery("")} className="text-sm text-gray-500">Limpiar</button>
+          )}
+          <span className="text-sm text-gray-400">{filteredProducts.length} / {products.length}</span>
+        </div>
       </div>
 
       {loading ? (
@@ -583,7 +600,7 @@ export default function Update() {
         </div>
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <ProductCard
               key={product.id}
               product={product}
