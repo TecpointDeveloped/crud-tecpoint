@@ -322,7 +322,7 @@ function EditModal({ product, onClose, onSaved }) {
         <div className="flex flex-1 overflow-hidden">
 
           {/* Columna izquierda: imágenes */}
-          <div className="w-56 shrink-0 border-r border-gray-100 p-4 flex flex-col gap-3 overflow-y-auto">
+          <div className="w-[500px] shrink-0 border-r border-gray-100 p-4 flex flex-col gap-3 overflow-y-auto">
             <p className="text-[11px] font-medium uppercase tracking-wide text-gray-400">Imágenes</p>
             <div className="aspect-square w-full rounded-xl border border-gray-100 overflow-hidden bg-gray-50 flex items-center justify-center">
               {previewSrc ? (
