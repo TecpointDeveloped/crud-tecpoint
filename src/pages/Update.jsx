@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { db } from "../firebaseConfig";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import ProductCard from "../components/ProductCard";
 
 function Update() {
   const [products, setProducts] = useState([]);
@@ -112,33 +113,12 @@ function Update() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 w-full">
       <h1 className="text-2xl font-bold mb-4">Lista de Productos</h1>
 
-      <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {products.map((product) => (
-          <li key={product.id} className="p-2 border rounded-lg shadow flex flex-col items-center">
-            <div className="flex">
-              <div className="flex items-center gap-4">
-                <img
-                  src={product.imagenes?.imagen_01?.img || "/default-product.webp"}
-                  alt={product.producto}
-                  className="size-[180px] aspect-square object-contain mb-2 border rounded-lg"
-                />
-                <div className="flex flex-col gap-4">
-                  <h3 className="text-xl font-semibold tracking-[-0.9px] leading-[18px]">{product.producto}</h3>
-                  <h4>{product.sku || "null"}</h4>
-                  <h4>{product.marca_producto.marca || "null"}</h4>
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={() => openModal(product)}
-              className="mt-2 bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
-            >
-              Editar
-            </button>
-          </li>
+          <ProductCard key={product.id} product={product} onEdit={() => openModal(product)} />
         ))}
       </ul>
 
