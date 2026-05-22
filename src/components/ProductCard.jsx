@@ -3,44 +3,27 @@ import Button from "./Button";
 
 export default function ProductCard({ product, onEdit }) {
   const imgSrc = product.imagenes?.imagen_01?.img || "/default-product.webp";
-  const price =
-    product.precio && product.precio.detalle != null
-      ? `$${Number(product.precio.detalle).toFixed(2)}`
-      : null;
   const inStock = product.extradata?.stock ?? true;
 
   return (
-    <li className="bg-white rounded-lg shadow-sm hover:shadow-md transition p-4 flex flex-col">
-      <div className="relative w-full pb-[100%] overflow-hidden rounded-md bg-gray-50">
-        <img
-          src={imgSrc}
-          alt={product.producto}
-          className="absolute inset-0 w-full h-full object-contain p-4"
-        />
-        {price && (
-          <div className="absolute top-2 right-2 bg-white/90 text-sm text-gray-800 px-2 py-1 rounded-md font-semibold shadow">
-            {price}
-          </div>
-        )}
-      </div>
+    <li className="flex items-center gap-4 p-3 bg-white border border-transparent hover:border-gray-200 rounded-md transition-colors">
+      <img src={imgSrc} alt={product.producto} className="w-16 h-16 object-contain rounded-sm bg-gray-50 p-1" />
 
-      <div className="mt-3 flex-1">
-        <h3 className="text-lg font-semibold leading-tight truncate">{product.producto}</h3>
-        <p className="text-sm text-gray-500 mt-1 truncate">{product.marca_producto?.marca || "Marca desconocida"}</p>
-        <div className="mt-2 flex items-center gap-2">
-          <span
-            className={`text-xs px-2 py-1 rounded-full ${
-              inStock ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
-            }`}
-          >
-            {inStock ? "En stock" : "Agotado"}
-          </span>
-          <span className="text-xs text-gray-500">SKU: {product.sku || "-"}</span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-3">
+          <div className="truncate">
+            <h3 className="text-sm font-medium truncate">{product.producto}</h3>
+            <p className="text-xs text-gray-500 truncate">{product.marca_producto?.marca || ""} - {product.sku || ""}</p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className={`h-2 w-2 rounded-full ${inStock ? "bg-green-500" : "bg-red-500"}`} aria-hidden></span>
+          </div>
         </div>
       </div>
 
-      <div className="mt-4 flex gap-2">
-        <Button variant="primary" className="flex-1" onClick={onEdit}>
+      <div className="shrink-0">
+        <Button variant="ghost" className="text-sm" onClick={onEdit}>
           Editar
         </Button>
       </div>
