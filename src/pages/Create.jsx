@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "../components/Toast";
 import { db, storage } from "../firebaseConfig";
 import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -32,6 +33,8 @@ function Create() {
     description: "",
     image: "",
   });
+
+  const showToast = useToast();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -102,7 +105,6 @@ function Create() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     // if (!validateForm()) return;
-
     try {
       const uploadedImages = await uploadImagesToStorage(formData.sku);
 
@@ -151,11 +153,11 @@ function Create() {
         },
       });
 
-      alert("¡Producto subido con éxito!");
+      if (showToast) showToast("Producto subido con éxito", "success");
       // resetForm();
     } catch (error) {
       console.error("Error subiendo producto:", error);
-      alert("Hubo un error al subir el producto.");
+      if (showToast) showToast("Error al subir producto: " + (error.message || ""), "error");
     }
   };
 

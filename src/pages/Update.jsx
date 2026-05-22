@@ -9,6 +9,7 @@ import {
   deleteObject,
 } from "firebase/storage";
 import ProductCard from "../components/ProductCard";
+import { useToast } from "../components/Toast";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -157,6 +158,7 @@ function EditModal({ product, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [isDirty, setIsDirty] = useState(false);
+  const showToast = useToast();
   const scrollRef = useRef(null);
 
   const previewSrc =
@@ -191,6 +193,7 @@ function EditModal({ product, onClose, onSaved }) {
       setActiveImgKey(remaining[0] ?? null);
     }
     setIsDirty(true);
+    showToast("Imagen eliminada", "success");
   };
 
   const handleAddFile = (e) => {
@@ -243,9 +246,11 @@ function EditModal({ product, onClose, onSaved }) {
       await updateDoc(doc(db, "Products", product.id), payload);
       onSaved({ ...payload, id: product.id });
       setIsDirty(false);
+      showToast("Producto actualizado correctamente", "success");
       onClose();
     } catch (err) {
       setError(err.message);
+      showToast("Error al actualizar: " + (err.message || ""), "error");
     } finally {
       setSaving(false);
     }
