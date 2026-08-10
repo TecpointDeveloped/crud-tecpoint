@@ -1,8 +1,15 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState, useEffect } from 'react';
 import { auth } from '../src/firebaseConfig'; // Importa tu instancia de auth
-import { onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, signOut } from 'firebase/auth';
 
 const AuthContext = createContext();
+const AUTHORIZED_EMAILS = new Set([
+  'administracion@tecpoint.ws',
+  'marketing@tecpoint.ws',
+]);
+
+const isAuthorized = (user) => Boolean(user?.email && AUTHORIZED_EMAILS.has(user.email.toLowerCase()));
 
 export const useAuth = () => {
   return useContext(AuthContext);
@@ -16,7 +23,7 @@ export const AuthProvider = ({ children }) => {
   // y manejar localStorage.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
+      if (user && isAuthorized(user)) {
         // Usuario logueado, guarda en localStorage
         console.log("Usuario autenticado (onAuthStateChanged):", user.uid);
         localStorage.setItem('firebaseUser', JSON.stringify({
@@ -27,6 +34,7 @@ export const AuthProvider = ({ children }) => {
         }));
         setCurrentUser(user);
       } else {
+        if (user) await signOut(auth);
         // No hay usuario logueado, elimina de localStorage
         console.log("No hay usuario autenticado (onAuthStateChanged).");
         localStorage.removeItem('firebaseUser');
@@ -56,15 +64,37 @@ export const AuthProvider = ({ children }) => {
   // Función para iniciar sesión con Google
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
     try {
       const result = await signInWithPopup(auth, provider);
       // El usuario ya se establecerá por onAuthStateChanged
       console.log("Inicio de sesión con Google exitoso:", result.user.uid);
-      return result.user; // Opcional, puedes devolver el usuario si lo necesitas inmediatamente
+      if (!isAuthorized(result.user)) {
+        await signOut(auth);
+        const accessError = new Error('Esta cuenta no está autorizada para administrar TECPOINT.');
+        accessError.code = 'auth/access-denied';
+        throw accessError;
+      }
+      return result.user;
     } catch (error) {
       console.error("Error al iniciar sesión con Google:", error.message);
+      if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/network-request-failed'].includes(error.code)) {
+        await signInWithRedirect(auth, provider);
+        return null;
+      }
       throw error; // Propagar el error para manejarlo en el componente de Login
     }
+  };
+
+  const signInWithPassword = async (email, password) => {
+    const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+    if (!isAuthorized(result.user)) {
+      await signOut(auth);
+      const accessError = new Error('Esta cuenta no está autorizada para administrar TECPOINT.');
+      accessError.code = 'auth/access-denied';
+      throw accessError;
+    }
+    return result.user;
   };
 
   // Función para cerrar sesión
@@ -83,6 +113,7 @@ export const AuthProvider = ({ children }) => {
     currentUser,
     loading,
     signInWithGoogle,
+    signInWithPassword,
     logout,
   };
 

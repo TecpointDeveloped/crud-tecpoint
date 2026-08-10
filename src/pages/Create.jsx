@@ -2,6 +2,7 @@ import { useState } from "react";
 import { db, storage } from "../firebaseConfig";
 import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { qualityIssues } from "../lib/productQuality";
 
 function Create() {
   const [formData, setFormData] = useState({
@@ -17,6 +18,7 @@ function Create() {
     modelId: "",
     stock: "true",
     SubCategorias: [],
+    searchAliases: [],
   });
 
   const [imageFiles, setImageFiles] = useState([]);
@@ -106,9 +108,9 @@ function Create() {
     try {
       const uploadedImages = await uploadImagesToStorage(formData.sku);
 
-      await addDoc(collection(db, "Products"), {
+      const productPayload = {
         categorias: formData.categories,
-        SubCategorias: formData.SubCategorias,
+        Subcategorias: Array.isArray(formData.SubCategorias) ? formData.SubCategorias.join(", ") : formData.SubCategorias,
         descripcion: formData.description,
         fecha_agregado: new Date().toISOString(),
         imagenes: uploadedImages,
@@ -130,6 +132,7 @@ function Create() {
           stock: formData.stock === "true",
           upc: formData.upc,
           tags: formData.SeoTags,
+          searchAliases: formData.searchAliases,
           especificaciones: Object.fromEntries(
             specifications.map((spec) => [spec.key, spec.value])
           ),
@@ -149,6 +152,12 @@ function Create() {
             ficha_image: fichaDescriptiva.image,
           },
         },
+      };
+      const issues = qualityIssues(productPayload);
+      await addDoc(collection(db, "Products"), {
+        ...productPayload,
+        publication_status: issues.length ? "draft_incomplete" : "ready",
+        publication_issues: issues,
       });
 
       alert("¡Producto subido con éxito!");
@@ -330,6 +339,17 @@ function Create() {
                 SeoTags: e.target.value.split(",").map((tag) => tag.trim()),
               }))
             }
+          />
+
+          <input
+            className="border w-full py-2 px-4 rounded-md"
+            type="text"
+            name="searchAliases"
+            placeholder="Variantes de búsqueda: cubo, cubito, cabeza…"
+            onChange={(e) => setFormData((prev) => ({
+              ...prev,
+              searchAliases: e.target.value.split(",").map((item) => item.trim()).filter(Boolean),
+            }))}
           />
 
           <input

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { db } from "../firebaseConfig";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { qualityIssues } from "../lib/productQuality";
 
 // Componentes básicos para simular Card o Button si no los importas de App.jsx directamente
 // (Aunque es mejor usar los componentes creados en ./components si están disponibles)
@@ -169,18 +170,26 @@ function Update() {
           mayoreo: parseFloat(updatedData.precio?.mayoreo) || 0, // Convertir a número
         },
         extradata: {
+          ...(updatedData.extradata || {}),
           stock: updatedData.extradata?.stock || false,
           especificaciones: updatedData.extradata?.especificaciones || "",
           tags: updatedData.extradata?.tags || "", // Asegurarse de que tags se maneje
         },
         // Asegurarse de que categoria y subcategorias sean strings, o arrays si es necesario
-        categorias: updatedData.categorias || "",
-        SubCategorias: updatedData.SubCategorias || "",
+        categorias: Array.isArray(updatedData.categorias)
+          ? updatedData.categorias
+          : String(updatedData.categorias || "").split(",").map((item) => item.trim()).filter(Boolean),
+        Subcategorias: updatedData.Subcategorias || updatedData.SubCategorias || "",
         imagenes: finalImages,
         marca_producto: {
+          ...(updatedData.marca_producto || {}),
           marca: updatedData.marca_producto?.marca || "",
         },
       };
+
+      const issues = qualityIssues(updatedProductData);
+      updatedProductData.publication_status = issues.length ? "draft_incomplete" : "ready";
+      updatedProductData.publication_issues = issues;
 
       await updateDoc(productRef, updatedProductData);
       setProducts((prev) =>
@@ -373,6 +382,18 @@ function Update() {
                   </div>
 
                   <label className="block">
+                    <span className="text-gray-700 text-sm font-medium">UPC:</span>
+                    <input
+                      type="text"
+                      name="extradata.upc"
+                      value={updatedData.extradata?.upc || ""}
+                      onChange={handleChange}
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500"
+                      placeholder="Código UPC del producto"
+                    />
+                  </label>
+
+                  <label className="block">
                     <span className="text-gray-700 text-sm font-medium">URL (Permalink):</span>
                     <input
                       type="text"
@@ -430,6 +451,19 @@ function Update() {
                       className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="Ej: gaming, oficina"
                     />
+                  </label>
+
+                  <label className="block">
+                    <span className="text-gray-700 text-sm font-medium">Variantes y formas de buscar:</span>
+                    <textarea
+                      name="extradata.searchAliases"
+                      value={Array.isArray(updatedData.extradata?.searchAliases) ? updatedData.extradata.searchAliases.join(", ") : updatedData.extradata?.searchAliases || ""}
+                      onChange={handleChange}
+                      rows="2"
+                      className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 focus:ring-red-500 focus:border-red-500 resize-y"
+                      placeholder="Ej. cargador, cabeza, cubo, cubito de carga, charger"
+                    />
+                    <small className="text-gray-500">Separe cada variante con coma. Incluya términos reales; no altere el nombre oficial.</small>
                   </label>
 
                   <label className="flex items-center space-x-2 cursor-pointer">

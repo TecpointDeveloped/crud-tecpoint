@@ -1,18 +1,45 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email in [
+          'administracion@tecpoint.ws',
+          'marketing@tecpoint.ws'
+        ];
+    }
     // Permite a cualquier usuario autenticado leer los datos de CUALQUIER otro usuario
     // ¡¡¡ADVERTENCIA DE SEGURIDAD!!!
     match /users/{userId} {
-      allow read: if request.auth != null;
+      allow read: if isAdmin();
       // Para escritura, podrías permitir que solo el usuario actual escriba su propio documento:
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if isAdmin() && request.auth.uid == userId;
     }
 
     // Tus reglas existentes para la colección 'Projects'
     match /Projects/{projectId} {
       allow read: if true; // O tus reglas actuales para Projects
-      allow write: if request.auth != null; // Ejemplo
+      allow write: if isAdmin();
+    }
+
+    match /Products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /site_banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /flash_promotions/{promotionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /site_settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

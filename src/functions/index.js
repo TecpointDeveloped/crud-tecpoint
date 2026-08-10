@@ -8,7 +8,7 @@ const admin = require('firebase-admin');
 // Si lo ejecutarías localmente o en otro servidor, necesitarías tu serviceAccountKey.json
 admin.initializeApp();
 
-exports.listAllUsers = functions.https.onCall(async (data, context) => {
+exports.listAllUsers = functions.https.onCall(async () => {
   // Opcional: Implementa reglas de seguridad. Por ejemplo, solo permitir administradores.
   // if (!context.auth) {
   //   throw new functions.https.HttpsError('unauthenticated', 'La función requiere autenticación.');
