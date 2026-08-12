@@ -22,7 +22,7 @@ import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { duplicateKeys, qualityIssues } from './lib/productQuality';
 
 import {
-  Home, Plus, FileText, MoreHorizontal, PlusCircle, Pencil, LogOut,
+  Home, Plus, FileText, PlusCircle, Pencil, LogOut,
   UserCircle2, Package, Tag, AlertTriangle, CheckCircle2, BadgeCheck, Images, Settings2, Menu, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -192,7 +192,6 @@ const SidebarContent = ({ onNavigate }) => {
         <NavItem onNavigate={onNavigate} to="/calidad" icon={<BadgeCheck className="w-5 h-5" />} text="Calidad y duplicados" />
         <div className="font-semibold text-sm mt-6 mb-2 text-gray-500 uppercase tracking-wider pt-4 border-t border-gray-100">Contenido web</div>
         <NavItem onNavigate={onNavigate} to="/contenido" icon={<Images className="w-5 h-5" />} text="Banners, videos y promociones" />
-        <NavItem onNavigate={onNavigate} to="/more" icon={<MoreHorizontal className="w-5 h-5" />} text="Más" />
       </nav>
       {currentUser && (
         <div className="mt-auto pt-4 border-t border-gray-100">
@@ -262,13 +261,6 @@ const DashboardLayout = () => {
           <Route path="/contenido" element={<MarketingAssets />} />
           <Route path="/configuracion" element={<SiteSettings />} />
           <Route path="/projects" element={<Projects />} />
-          <Route path="/lifecycle" element={<h2 className="text-2xl font-bold p-6">Lifecycle Page</h2>} />
-          <Route path="/analytics" element={<h2 className="text-2xl font-bold p-6">Analytics Page</h2>} />
-          <Route path="/data-library" element={<h2 className="text-2xl font-bold p-6">Data Library Page</h2>} />
-          <Route path="/reports" element={<h2 className="text-2xl font-bold p-6">Reports Page</h2>} />
-          <Route path="/word-assistant" element={<h2 className="text-2xl font-bold p-6">Word Assistant Page</h2>} />
-          <Route path="/team" element={<h2 className="text-2xl font-bold p-6">Team Page</h2>} />
-          <Route path="/more" element={<h2 className="text-2xl font-bold p-6">More Page</h2>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

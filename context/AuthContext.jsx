@@ -10,7 +10,12 @@ const AUTHORIZED_EMAILS = new Set([
   'tecpointdistribucion2@gmail.com',
 ]);
 
-const isAuthorized = (user) => Boolean(user?.email && AUTHORIZED_EMAILS.has(user.email.toLowerCase()));
+const isAuthorized = async (user) => {
+  if (!user?.email) return false;
+  if (AUTHORIZED_EMAILS.has(user.email.toLowerCase())) return true;
+  const token = await user.getIdTokenResult();
+  return token.claims.role === 'admin';
+};
 
 export const useAuth = () => {
   return useContext(AuthContext);
@@ -24,7 +29,7 @@ export const AuthProvider = ({ children }) => {
   // y manejar localStorage.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && isAuthorized(user)) {
+      if (user && await isAuthorized(user)) {
         // Usuario logueado, guarda en localStorage
         console.log("Usuario autenticado (onAuthStateChanged):", user.uid);
         localStorage.setItem('firebaseUser', JSON.stringify({
@@ -70,7 +75,7 @@ export const AuthProvider = ({ children }) => {
       const result = await signInWithPopup(auth, provider);
       // El usuario ya se establecerá por onAuthStateChanged
       console.log("Inicio de sesión con Google exitoso:", result.user.uid);
-      if (!isAuthorized(result.user)) {
+      if (!await isAuthorized(result.user)) {
         await signOut(auth);
         const accessError = new Error('Esta cuenta no está autorizada para administrar TECPOINT.');
         accessError.code = 'auth/access-denied';
@@ -89,7 +94,7 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithPassword = async (email, password) => {
     const result = await signInWithEmailAndPassword(auth, email.trim(), password);
-    if (!isAuthorized(result.user)) {
+    if (!await isAuthorized(result.user)) {
       await signOut(auth);
       const accessError = new Error('Esta cuenta no está autorizada para administrar TECPOINT.');
       accessError.code = 'auth/access-denied';

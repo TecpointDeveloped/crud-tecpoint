@@ -3,11 +3,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email in [
-          'administracion@tecpoint.ws',
-          'marketing@tecpoint.ws',
-          'tecpointdistribucion2@gmail.com'
-        ];
+        && (
+          request.auth.token.role == 'admin'
+          || request.auth.token.email in [
+            'administracion@tecpoint.ws',
+            'marketing@tecpoint.ws',
+            'tecpointdistribucion2@gmail.com'
+          ]
+        );
     }
     // Permite a cualquier usuario autenticado leer los datos de CUALQUIER otro usuario
     // ¡¡¡ADVERTENCIA DE SEGURIDAD!!!
