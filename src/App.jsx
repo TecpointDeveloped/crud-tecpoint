@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react
 
 import Button from './components/Button';
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from './components/Card';
-import { Tabs, TabsList, TabsTrigger } from './components/Tabs';
 
 import { AuthProvider } from '../context/AuthContext';
 import PrivateRoute from './components/PrivateRoute.jsx';
@@ -20,27 +19,22 @@ const SiteSettings = lazy(() => import('./pages/SiteSettings'));
 // Importa db y las funciones de Firestore
 import { db } from './firebaseConfig.js';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { duplicateKeys, qualityIssues } from './lib/productQuality';
 
 import {
   Home, Plus, FileText, MoreHorizontal, PlusCircle, Pencil, LogOut,
-  UserCircle2, Package, Tag, Users, BadgeCheck, Images, Settings2, Menu, X
+  UserCircle2, Package, Tag, AlertTriangle, CheckCircle2, BadgeCheck, Images, Settings2, Menu, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const ChartComponent = () => (
-  <div className="w-full h-64 bg-gray-100 flex items-center justify-center rounded-md text-gray-400 border border-dashed border-gray-300">
-    Placeholder para el gráfico de visitantes
-  </div>
-);
-
 // --- DashboardHome MODIFICADO ---
 const DashboardHome = () => {
-  const [activeTab, setActiveTab] = useState('outline');
   const [stats, setStats] = useState({
     totalProducts: 0,
     totalBrands: 0,
-    totalUsers: 0, // Suponiendo que cada documento en 'Users' es un usuario único
-    totalProjects: 0, // Puedes reutilizar el conteo de proyectos
+    incompleteProducts: 0,
+    duplicateProducts: 0,
+    readyProducts: 0,
   });
   const [loadingStats, setLoadingStats] = useState(true);
   const [errorStats, setErrorStats] = useState(null);
@@ -50,28 +44,15 @@ const DashboardHome = () => {
     setLoadingStats(true);
     setErrorStats(null);
     try {
-      // Fetch Products Count
-      const productsCollectionRef = collection(db, "Products"); // Cambia "Products" si tu colección se llama diferente
+      // El panel usa únicamente colecciones reales del proyecto.
+      const productsCollectionRef = collection(db, "Products");
       const productsSnapshot = await getDocs(productsCollectionRef);
-      const totalProducts = productsSnapshot.size;
-
-      // Fetch Brands Count
-      const brandsCollectionRef = collection(db, "Brands"); // Cambia "Brands" si tu colección se llama diferente
-      const brandsSnapshot = await getDocs(brandsCollectionRef);
-      const totalBrands = brandsSnapshot.size;
-
-      // Fetch Users Count (desde una colección 'Users' si la tienes, si no, puedes enlazar con la Cloud Function de Auth)
-      // Para propósitos de este ejemplo, asumiré una colección 'Users'.
-      // Si quieres el conteo exacto de Firebase Auth, necesitarías otra Cloud Function
-      // que te devuelva solo el conteo de usuarios de Auth, o modificar listAllUsers.
-      const usersCollectionRef = collection(db, "Users"); // Cambia "Users" si tu colección de usuarios es diferente o no existe
-      const usersSnapshot = await getDocs(usersCollectionRef);
-      const totalUsers = usersSnapshot.size;
-
-      // Fetch Projects Count (ya que tienes una tabla de proyectos, puedes contarlos aquí también)
-      const projectsCollectionRef = collection(db, "Projects");
-      const projectsSnapshot = await getDocs(projectsCollectionRef);
-      const totalProjects = projectsSnapshot.size;
+      const products = productsSnapshot.docs.map((productDoc) => ({ id: productDoc.id, ...productDoc.data() }));
+      const duplicates = duplicateKeys(products);
+      const duplicateIds = new Set([...duplicates.sku, ...duplicates.upc]);
+      const incompleteIds = new Set(products.filter((product) => qualityIssues(product).length).map((product) => product.id));
+      const blockedIds = new Set([...duplicateIds, ...incompleteIds]);
+      const brands = new Set(products.map((product) => String(product.marca_producto?.marca || "").trim()).filter(Boolean));
       const settingsSnapshot = await getDoc(doc(db, "site_settings", "general")).catch(() => null);
       const settings = settingsSnapshot?.exists() ? settingsSnapshot.data() : {};
       setIntegrations({
@@ -82,10 +63,11 @@ const DashboardHome = () => {
 
 
       setStats({
-        totalProducts,
-        totalBrands,
-        totalUsers,
-        totalProjects,
+        totalProducts: products.length,
+        totalBrands: brands.size,
+        incompleteProducts: incompleteIds.size,
+        duplicateProducts: duplicateIds.size,
+        readyProducts: products.length - blockedIds.size,
       });
 
     } catch (err) {
@@ -104,11 +86,11 @@ const DashboardHome = () => {
   return (
     <>
       <header className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">Dashboard Overview</h1> {/* Título más genérico */}
+        <div><p className="text-xs font-bold uppercase tracking-[.18em] text-[#c8102e]">Resumen operativo</p><h1 className="mt-1 text-3xl font-semibold tracking-[-.035em] text-gray-950">Panel de control TECPOINT</h1></div>
         <Link to="/create">
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2">
+          <Button className="bg-[#c8102e] hover:bg-[#a90d26] text-white flex items-center space-x-2">
             <Plus className="w-4 h-4" />
-            <span>Quick Create</span>
+            <span>Crear producto</span>
           </Button>
         </Link>
       </header>
@@ -127,18 +109,18 @@ const DashboardHome = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Products</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Productos totales</CardTitle>
               <Package className="w-4 h-4 text-blue-500" /> {/* Icono de paquete */}
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-900">{stats.totalProducts}</div>
-              <p className="text-xs text-gray-500 mt-1">Items disponibles en inventario</p>
+              <p className="text-xs text-gray-500 mt-1">Fichas registradas en Firebase</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Brands</CardTitle>
+              <CardTitle className="text-sm font-medium text-gray-600">Marcas identificadas</CardTitle>
               <Tag className="w-4 h-4 text-purple-500" /> {/* Icono de etiqueta/marca */}
             </CardHeader>
             <CardContent>
@@ -149,62 +131,38 @@ const DashboardHome = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Registered Users</CardTitle>
-              <Users className="w-4 h-4 text-green-500" /> {/* Icono de usuarios */}
+              <CardTitle className="text-sm font-medium text-gray-600">Fichas por completar</CardTitle>
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{stats.totalUsers}</div>
-              <p className="text-xs text-gray-500 mt-1">Usuarios registrados en la plataforma</p>
+              <div className="text-2xl font-bold text-gray-900">{stats.incompleteProducts}</div>
+              <p className="text-xs text-gray-500 mt-1">No se muestran hasta corregirse</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">Total Projects</CardTitle>
-              <FileText className="w-4 h-4 text-orange-500" /> {/* Icono de proyectos */}
+              <CardTitle className="text-sm font-medium text-gray-600">Listos para publicar</CardTitle>
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">{stats.totalProjects}</div>
-              <p className="text-xs text-gray-500 mt-1">Proyectos documentados</p>
+              <div className="text-2xl font-bold text-gray-900">{stats.readyProducts}</div>
+              <p className="text-xs text-gray-500 mt-1">Sin faltantes ni duplicidad detectada</p>
             </CardContent>
           </Card>
         </div>
       )}
 
-      <Card className="mb-8">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-lg text-gray-800">Total Visitors</CardTitle>
-            <CardDescription className="text-gray-500">Total for the last 3 months</CardDescription>
-          </div>
-          <div className="flex space-x-2">
-            <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-100">Last 3 months</Button>
-            <Button variant="default" size="sm" className="bg-blue-600 text-white hover:bg-blue-700">Last 30 days</Button>
-            <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-100">Last 7 days</Button>
-          </div>
+      {!loadingStats && !errorStats && <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="text-lg text-gray-800">Salud del catálogo</CardTitle>
+          <CardDescription className="text-gray-500">Resumen real de las fichas que pueden mostrarse al cliente.</CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartComponent />
+          <div className="h-3 overflow-hidden rounded-full bg-gray-100"><div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${stats.totalProducts ? Math.round((stats.readyProducts / stats.totalProducts) * 100) : 0}%` }} /></div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-4"><p className="text-sm text-gray-600"><strong className="text-gray-950">{stats.readyProducts}</strong> de {stats.totalProducts} productos listos. <strong className="text-red-700">{stats.duplicateProducts}</strong> presentan SKU o UPC duplicado.</p><Link to="/calidad" className="rounded-xl bg-[#c8102e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#a90d26]">Revisar calidad →</Link></div>
         </CardContent>
-      </Card>
-
-      <div className="flex flex-wrap justify-between items-center bg-white p-4 rounded-md shadow-sm border border-gray-100">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-grow">
-          <TabsList className="bg-gray-100 p-1 rounded-md">
-            <TabsTrigger value="outline">Outline</TabsTrigger>
-            <TabsTrigger value="past-performance">Past Performance <span className="ml-1 text-xs bg-gray-200 px-2 py-0.5 rounded-full">3</span></TabsTrigger>
-            <TabsTrigger value="key-personnel">Key Personnel <span className="ml-1 text-xs bg-gray-200 px-2 py-0.5 rounded-full">2</span></TabsTrigger>
-            <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
-          </TabsList>
-        </Tabs>
-        <div className="flex space-x-2 ml-0 sm:ml-4 mt-4 sm:mt-0">
-          <Button variant="outline" size="sm" className="border-gray-300 text-gray-700 hover:bg-gray-100">Customize Columns</Button>
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white flex items-center space-x-2">
-            <Plus className="w-4 h-4" />
-            <span>Add Section</span>
-          </Button>
-        </div>
-      </div>
+      </Card>}
     </>
   );
 };
