@@ -7,6 +7,7 @@ const AuthContext = createContext();
 const AUTHORIZED_EMAILS = new Set([
   'administracion@tecpoint.ws',
   'marketing@tecpoint.ws',
+  'tecpointdistribucion2@gmail.com',
 ]);
 
 const isAuthorized = (user) => Boolean(user?.email && AUTHORIZED_EMAILS.has(user.email.toLowerCase()));
