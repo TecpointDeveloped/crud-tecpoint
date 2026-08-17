@@ -20,6 +20,7 @@ const SiteSettings = lazy(() => import('./pages/SiteSettings'));
 import { db } from './firebaseConfig.js';
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
 import { duplicateKeys, qualityIssues } from './lib/productQuality';
+import { PUBLIC_INTEGRATION_DEFAULTS } from './lib/integrationDefaults';
 
 import {
   Home, Plus, FileText, PlusCircle, Pencil, LogOut,
@@ -54,11 +55,13 @@ const DashboardHome = () => {
       const blockedIds = new Set([...duplicateIds, ...incompleteIds]);
       const brands = new Set(products.map((product) => String(product.marca_producto?.marca || "").trim()).filter(Boolean));
       const settingsSnapshot = await getDoc(doc(db, "site_settings", "general")).catch(() => null);
-      const settings = settingsSnapshot?.exists() ? settingsSnapshot.data() : {};
+      const settings = settingsSnapshot?.exists()
+        ? { ...PUBLIC_INTEGRATION_DEFAULTS, ...settingsSnapshot.data() }
+        : PUBLIC_INTEGRATION_DEFAULTS;
       setIntegrations({
         meta: Boolean(settings.metaPixelId),
         analytics: Boolean(settings.gaMeasurementId),
-        searchConsole: Boolean(settings.googleSiteVerification),
+        searchConsole: Boolean(settings.searchConsoleProperty),
       });
 
 

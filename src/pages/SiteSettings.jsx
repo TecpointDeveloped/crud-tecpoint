@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { BarChart3, CheckCircle2, MapPin, MessageCircle, Plus, Search, Trash2 } from "lucide-react";
 import { db } from "../firebaseConfig";
+import { PUBLIC_INTEGRATION_DEFAULTS } from "../lib/integrationDefaults";
 
 const defaultLocations = [
   { id:"plaza-carolina",city:"San Pedro Sula",name:"Plaza Carolina",detail:"Segundo nivel, bulevar Mackay",phone:"50493385732",maps:"https://www.google.com/maps/search/?api=1&query=TECPOINT%20Plaza%20Carolina%20San%20Pedro%20Sula" },
   { id:"portal-viera",city:"Tegucigalpa",name:"Portal de Viera",detail:"Tercer nivel, km 3 carretera a El Hatillo",phone:"50495200523",maps:"https://www.google.com/maps/search/?api=1&query=TECPOINT%20Portal%20de%20Viera%20Tegucigalpa" },
   { id:"mayoreo-pickup",city:"San Pedro Sula",name:"Mayoreo y Pick Up",detail:"Barrio Los Andes, 7 calle, 14 avenida",phone:"50498191003",maps:"https://www.google.com/maps/search/?api=1&query=TECPOINT%20Barrio%20Los%20Andes%207%20Calle%2014%20Avenida%20San%20Pedro%20Sula" },
 ];
-const defaults = { mainWhatsApp:"50497157784",onlineWhatsApp:"50494659287",wholesaleWhatsApp:"50498191003",metaPixelId:"",gaMeasurementId:"",googleSiteVerification:"",searchConsoleProperty:"https://tecpoint.ws/",locations:defaultLocations };
+const defaults = { mainWhatsApp:"50497157784",onlineWhatsApp:"50494659287",wholesaleWhatsApp:"50498191003",...PUBLIC_INTEGRATION_DEFAULTS,locations:defaultLocations };
 
 export default function SiteSettings() {
   const [data,setData] = useState(defaults); const [saving,setSaving] = useState(false); const [saved,setSaved] = useState(false);
@@ -21,7 +22,7 @@ export default function SiteSettings() {
     <section className="grid gap-4 lg:grid-cols-3">
       <StatusCard icon={BarChart3} title="Meta Pixel" active={Boolean(data.metaPixelId)} text={data.metaPixelId || "Falta configurar el ID"} href="https://business.facebook.com/events_manager2" />
       <StatusCard icon={BarChart3} title="Google Analytics 4" active={Boolean(data.gaMeasurementId)} text={data.gaMeasurementId || "Falta configurar el Measurement ID"} href="https://analytics.google.com/" />
-      <StatusCard icon={Search} title="Google Search Console" active={Boolean(data.googleSiteVerification)} text={data.searchConsoleProperty || "Propiedad sin configurar"} href="https://search.google.com/search-console" />
+      <StatusCard icon={Search} title="Google Search Console" active={Boolean(data.searchConsoleProperty)} text={data.searchConsoleProperty || "Propiedad sin configurar"} href="https://search.google.com/search-console" />
     </section>
     <section className="rounded-2xl border bg-white p-6"><h2 className="text-xl font-bold">Integraciones de medición</h2><p className="mb-5 text-sm text-gray-500">Use los identificadores oficiales. Guardarlos no crea las cuentas; conecta la web con cuentas ya existentes.</p><div className="grid gap-4 md:grid-cols-2"><Field label="Meta Pixel ID" value={data.metaPixelId} onChange={v=>update("metaPixelId",v)} placeholder="Ej. 123456789012345"/><Field label="Google Analytics Measurement ID" value={data.gaMeasurementId} onChange={v=>update("gaMeasurementId",v)} placeholder="G-XXXXXXXXXX"/><Field label="Token de verificación Search Console" value={data.googleSiteVerification} onChange={v=>update("googleSiteVerification",v)} /><Field label="Propiedad de Search Console" value={data.searchConsoleProperty} onChange={v=>update("searchConsoleProperty",v)} placeholder="https://tecpoint.ws/"/></div></section>
     <section className="rounded-2xl border bg-white p-6"><div className="flex items-center gap-3"><MessageCircle className="text-red-600"/><h2 className="text-xl font-bold">Números de WhatsApp</h2></div><div className="mt-5 grid gap-4 md:grid-cols-3"><Field label="Pedidos principales" value={data.mainWhatsApp} onChange={v=>update("mainWhatsApp",v)} /><Field label="Tienda en línea" value={data.onlineWhatsApp} onChange={v=>update("onlineWhatsApp",v)} /><Field label="Mayoreo" value={data.wholesaleWhatsApp} onChange={v=>update("wholesaleWhatsApp",v)} /></div><p className="mt-3 text-xs text-gray-500">Incluya código de país: Honduras 504. El sistema elimina espacios y guiones al crear el enlace.</p></section>

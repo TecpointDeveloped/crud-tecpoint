@@ -3,6 +3,7 @@ import { db } from "../firebaseConfig";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { qualityIssues } from "../lib/productQuality";
+import { useSearchParams } from "react-router-dom";
 
 // Componentes básicos para simular Card o Button si no los importas de App.jsx directamente
 // (Aunque es mejor usar los componentes creados en ./components si están disponibles)
@@ -25,6 +26,7 @@ const BasicButton = ({ children, className = '', ...props }) => (
 
 
 function Update() {
+  const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [updatedData, setUpdatedData] = useState({});
@@ -42,7 +44,15 @@ function Update() {
           ...doc.data(),
         }));
         setProducts(fetchedProducts);
-        console.log("Products fetched:", fetchedProducts);
+        const requestedId = searchParams.get("id");
+        const requestedProduct = requestedId
+          ? fetchedProducts.find((product) => product.id === requestedId)
+          : null;
+        if (requestedProduct) {
+          setSelectedProduct(requestedProduct);
+          setUpdatedData({ ...requestedProduct });
+          setImageFiles([]);
+        }
       } catch (err) {
         console.error("Error fetching products:", err);
         setError("Error al cargar los productos. Por favor, intente de nuevo.");
@@ -52,7 +62,7 @@ function Update() {
     };
 
     fetchProducts();
-  }, []);
+  }, [searchParams]);
 
   const openModal = (product) => {
     setSelectedProduct(product);
