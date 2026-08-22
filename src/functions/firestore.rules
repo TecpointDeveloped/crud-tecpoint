@@ -12,18 +12,13 @@ service cloud.firestore {
           ]
         );
     }
-    // Permite a cualquier usuario autenticado leer los datos de CUALQUIER otro usuario
-    // ¡¡¡ADVERTENCIA DE SEGURIDAD!!!
     match /users/{userId} {
       allow read: if isAdmin();
-      // Para escritura, podrías permitir que solo el usuario actual escriba su propio documento:
       allow write: if isAdmin() && request.auth.uid == userId;
     }
 
-    // Tus reglas existentes para la colección 'Projects'
     match /Projects/{projectId} {
-      allow read: if true; // O tus reglas actuales para Projects
-      allow write: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
     match /Products/{productId} {

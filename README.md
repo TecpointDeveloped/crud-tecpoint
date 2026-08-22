@@ -1,8 +1,34 @@
-# React + Vite
+# TECPOINT CRUD
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Panel administrativo para catálogo, calidad de fichas, banners, promociones, integraciones, WhatsApp y ubicaciones de TECPOINT.
 
-Currently, two official plugins are available:
+## Requisitos y desarrollo
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 20 LTS, pnpm 9 o superior y acceso autorizado a Firebase `tecpoint-2024`.
+- Ejecute `pnpm install --frozen-lockfile` y `pnpm dev`.
+- Abra `http://localhost:5173`; para OAuth use `localhost`, no `127.0.0.1`.
+
+## Verificación obligatoria
+
+Ejecute `pnpm lint` y `pnpm build`. La salida de producción se genera en `dist/`.
+
+## Acceso y seguridad
+
+- Firebase Authentication es la única fuente válida de sesión.
+- Firestore y Storage vuelven a validar que el usuario sea administrador.
+- Nunca agregue contraseñas, claves privadas, cuentas de servicio ni tokens secretos al repositorio.
+- El `apiKey` del SDK web identifica el proyecto; la seguridad depende de Authentication, App Check y las reglas publicadas.
+
+## Vercel
+
+- Repositorio: `TecpointDeveloped/crud-tecpoint`.
+- Producción: rama `main`, instalación `pnpm install`, compilación `pnpm build`, salida `dist`.
+- Cada push genera un despliegue; confirme que finalice como **Ready**.
+
+## Firebase
+
+Las reglas están en `src/functions/firestore.rules` y `src/functions/storage.rules`. Una persona autenticada con permisos puede publicarlas con `firebase deploy --only firestore:rules,storage`. Este comando modifica los permisos reales: revise los cambios antes de ejecutarlo.
+
+## Publicación de productos
+
+Una ficha no está lista si falta SKU, UPC, nombre, slug, descripción suficiente, categoría, marca, precio o fotografía. Los SKU y UPC duplicados también se bloquean. El panel nunca debe inventar ni modificar automáticamente precios, existencias, SKU o UPC.

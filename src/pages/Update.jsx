@@ -31,6 +31,7 @@ function Update() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [updatedData, setUpdatedData] = useState({});
   const [imageFiles, setImageFiles] = useState([]); // Para archivos de imagen nuevos a subir
+  const [pendingImageDeletions, setPendingImageDeletions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -52,6 +53,7 @@ function Update() {
           setSelectedProduct(requestedProduct);
           setUpdatedData({ ...requestedProduct });
           setImageFiles([]);
+          setPendingImageDeletions([]);
         }
       } catch (err) {
         console.error("Error fetching products:", err);
@@ -68,12 +70,14 @@ function Update() {
     setSelectedProduct(product);
     setUpdatedData({ ...product }); // Clonar para evitar mutaciones directas
     setImageFiles([]); // Resetear archivos de imagen al abrir un nuevo modal
+    setPendingImageDeletions([]);
   };
 
   const closeModal = () => {
     setSelectedProduct(null);
     setUpdatedData({});
     setImageFiles([]);
+    setPendingImageDeletions([]);
   };
 
   const handleChange = (e) => {
@@ -106,7 +110,7 @@ function Update() {
     setImageFiles((prev) => [...prev, { file: null, order: prev.length }]);
   };
 
-  const handleRemoveExistingImage = async (imageKey) => {
+  const handleRemoveExistingImage = (imageKey) => {
     if (!selectedProduct) return;
 
     const imageUrl = updatedData.imagenes?.[imageKey]?.img;
@@ -115,21 +119,12 @@ function Update() {
       return;
     }
 
-    const storage = getStorage();
-    const imageRef = ref(storage, imageUrl); // La URL de descarga contiene la ruta completa
-
-    try {
-      await deleteObject(imageRef);
-      setUpdatedData((prev) => {
-        const updatedImages = { ...prev.imagenes };
-        delete updatedImages[imageKey];
-        return { ...prev, imagenes: updatedImages };
-      });
-      alert("Imagen eliminada de Firebase Storage y del producto.");
-    } catch (error) {
-      console.error("Error eliminando la imagen:", error);
-      alert("Error eliminando la imagen: " + error.message);
-    }
+    setPendingImageDeletions((previous) => previous.includes(imageUrl) ? previous : [...previous, imageUrl]);
+    setUpdatedData((prev) => {
+      const updatedImages = { ...prev.imagenes };
+      delete updatedImages[imageKey];
+      return { ...prev, imagenes: updatedImages };
+    });
   };
 
 
@@ -202,11 +197,22 @@ function Update() {
       updatedProductData.publication_issues = issues;
 
       await updateDoc(productRef, updatedProductData);
+      const failedImageDeletions = [];
+      for (const imageUrl of pendingImageDeletions) {
+        try {
+          await deleteObject(ref(storage, imageUrl));
+        } catch (imageError) {
+          console.warn("No se pudo limpiar una imagen antigua de Storage:", imageError);
+          failedImageDeletions.push(imageUrl);
+        }
+      }
       setProducts((prev) =>
         prev.map((p) => (p.id === selectedProduct.id ? { ...updatedProductData, id: selectedProduct.id } : p))
       );
       closeModal();
-      alert("Producto actualizado exitosamente!");
+      alert(failedImageDeletions.length
+        ? "Producto actualizado. Algunas imágenes antiguas no pudieron limpiarse de Storage, pero ya no se muestran en la ficha."
+        : "¡Producto actualizado exitosamente!");
     } catch (err) {
       console.error("Error updating product:", err);
       alert("Error actualizando producto: " + err.message);
@@ -216,7 +222,7 @@ function Update() {
   };
 
   return (
-    <div className="p-6 min-w-[76vw]">
+    <div className="w-full p-1 sm:p-3 lg:p-6">
       <h1 className="text-3xl font-bold mb-6 text-gray-800">Actualizar Productos</h1>
 
       {loading && <p className="text-center text-gray-600 text-lg">Cargando productos...</p>}

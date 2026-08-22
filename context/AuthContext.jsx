@@ -25,45 +25,22 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Efecto para escuchar cambios en el estado de autenticación de Firebase
-  // y manejar localStorage.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user && await isAuthorized(user)) {
-        // Usuario logueado, guarda en localStorage
-        console.log("Usuario autenticado (onAuthStateChanged):", user.uid);
-        localStorage.setItem('firebaseUser', JSON.stringify({
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-        }));
-        setCurrentUser(user);
-      } else {
-        if (user) await signOut(auth);
-        // No hay usuario logueado, elimina de localStorage
-        console.log("No hay usuario autenticado (onAuthStateChanged).");
-        localStorage.removeItem('firebaseUser');
-        setCurrentUser(null);
-      }
-      setLoading(false); // La carga inicial ha terminado
-    });
-
-    // Cargar usuario desde localStorage al inicio (si existe)
-    const storedUser = localStorage.getItem('firebaseUser');
-    if (storedUser) {
       try {
-        setCurrentUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Error parsing stored user from localStorage:", e);
-        localStorage.removeItem('firebaseUser');
+        if (user && await isAuthorized(user)) {
+          setCurrentUser(user);
+        } else {
+          if (user) await signOut(auth);
+          setCurrentUser(null);
+        }
+      } catch (error) {
+        console.error("No fue posible validar la sesión administrativa:", error);
+        setCurrentUser(null);
+      } finally {
+        setLoading(false);
       }
-    } else {
-        setLoading(false); // Si no hay nada en localStorage, terminamos la carga
-    }
-
-
-    // Limpiar el listener al desmontar el componente
+    });
     return () => unsubscribe();
   }, []);
 
@@ -73,8 +50,6 @@ export const AuthProvider = ({ children }) => {
     provider.setCustomParameters({ prompt: 'select_account' });
     try {
       const result = await signInWithPopup(auth, provider);
-      // El usuario ya se establecerá por onAuthStateChanged
-      console.log("Inicio de sesión con Google exitoso:", result.user.uid);
       if (!await isAuthorized(result.user)) {
         await signOut(auth);
         const accessError = new Error('Esta cuenta no está autorizada para administrar TECPOINT.');
@@ -107,8 +82,6 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       await signOut(auth);
-      console.log("Sesión cerrada.");
-      // onAuthStateChanged se encargará de actualizar el estado y localStorage
     } catch (error) {
       console.error("Error al cerrar sesión:", error.message);
       throw error;
@@ -125,7 +98,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children} {/* Renderiza los children solo después de cargar */}
+      {children}
     </AuthContext.Provider>
   );
 };

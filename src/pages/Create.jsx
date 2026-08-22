@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { db, storage } from "../firebaseConfig";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { qualityIssues } from "../lib/productQuality";
 
@@ -18,12 +18,14 @@ function Create() {
     modelId: "",
     stock: "true",
     SubCategorias: [],
+    SeoTags: [],
     searchAliases: [],
   });
 
   const [imageFiles, setImageFiles] = useState([]);
   const [previewImages, setPreviewImages] = useState([]);
-  const [error,] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [specifications, setSpecifications] = useState([{ key: "", value: "" }]);
   const [sections, setSections] = useState([
     { id: "seccion_01", title: "", imageUrl: "" },
@@ -42,6 +44,13 @@ function Create() {
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
+    const invalidFile = files.find((file) => !file.type.startsWith("image/") || file.size > 8 * 1024 * 1024);
+    if (invalidFile) {
+      setError("Use únicamente imágenes de hasta 8 MB por archivo.");
+      e.target.value = "";
+      return;
+    }
+    previewImages.forEach((preview) => URL.revokeObjectURL(preview.url));
     const orderedFiles = files.map((file, index) => ({ file, order: index }));
     setImageFiles(orderedFiles);
     const previews = orderedFiles.map(({ file }) => ({
@@ -49,7 +58,12 @@ function Create() {
       url: URL.createObjectURL(file),
     }));
     setPreviewImages(previews);
+    setError("");
   };
+
+  useEffect(() => () => {
+    previewImages.forEach((preview) => URL.revokeObjectURL(preview.url));
+  }, [previewImages]);
 
   // const validateForm = () => {
   //   const {
@@ -103,10 +117,39 @@ function Create() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // if (!validateForm()) return;
-
+    if (submitting) return;
+    setError("");
+    const normalizedSku = formData.sku.trim();
+    const normalizedUpc = formData.upc.replace(/\s+/g, "");
+    const normalizedSlug = formData.slug.trim().toLowerCase();
+    const requiredMissing = [
+      !formData.productName.trim() && "nombre",
+      formData.description.trim().length < 20 && "descripción de al menos 20 caracteres",
+      !normalizedSku && "SKU",
+      !normalizedUpc && "UPC",
+      !normalizedSlug && "slug",
+      !(Number(formData.detailPrice) > 0) && "precio de detalle",
+      !formData.categories.some(Boolean) && "categoría",
+      !formData.brand.trim() && "marca",
+      !imageFiles.length && "al menos una imagen",
+    ].filter(Boolean);
+    if (requiredMissing.length) {
+      setError(`Complete antes de guardar: ${requiredMissing.join(", ")}.`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    setSubmitting(true);
     try {
-      const uploadedImages = await uploadImagesToStorage(formData.sku);
+      const existingSnapshot = await getDocs(collection(db, "Products"));
+      const duplicate = existingSnapshot.docs.find((productDoc) => {
+        const product = productDoc.data();
+        return String(product.sku || "").trim().toLowerCase() === normalizedSku.toLowerCase()
+          || String(product.extradata?.upc || "").replace(/\s+/g, "") === normalizedUpc
+          || String(product.slug || "").trim().toLowerCase() === normalizedSlug;
+      });
+      if (duplicate) throw new Error("Ya existe un producto con ese SKU, UPC o slug.");
+
+      const uploadedImages = await uploadImagesToStorage(normalizedSku);
 
       const productPayload = {
         categorias: formData.categories,
@@ -123,14 +166,14 @@ function Create() {
           mayoreo: parseFloat(formData.wholesalePrice),
         },
         producto: formData.productName,
-        sku: formData.sku,
-        slug: formData.slug,
+        sku: normalizedSku,
+        slug: normalizedSlug,
         extradata: {
           color: '',
           discount: 0,
           modelId: formData.modelId,
           stock: formData.stock === "true",
-          upc: formData.upc,
+          upc: normalizedUpc,
           tags: formData.SeoTags,
           searchAliases: formData.searchAliases,
           especificaciones: Object.fromEntries(
@@ -160,11 +203,16 @@ function Create() {
         publication_issues: issues,
       });
 
-      alert("¡Producto subido con éxito!");
+      alert(issues.length
+        ? `Producto guardado como borrador. Falta completar: ${issues.join(", ")}.`
+        : "¡Producto guardado y listo para publicar!");
       // resetForm();
     } catch (error) {
       console.error("Error subiendo producto:", error);
-      alert("Hubo un error al subir el producto.");
+      setError(error.message || "Hubo un error al subir el producto.");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -233,7 +281,8 @@ function Create() {
 
   return (
     <div className="w-full">
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 w-[800px] mx-auto">
+      <form onSubmit={handleSubmit} className="mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-2xl border bg-white p-4 shadow-sm sm:p-7">
+        <div><p className="text-xs font-bold uppercase tracking-[.18em] text-[#c8102e]">Catálogo TECPOINT</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">Crear producto</h1><p className="mt-2 text-sm text-gray-600">Los productos incompletos se guardan como borrador y no se muestran al cliente.</p></div>
         <div>
           <label className="font-semibold">Subir Imágenes del Producto</label>
           <input
@@ -258,7 +307,7 @@ function Create() {
           </div>
         )}
 
-        {error && <p className="text-red-500">{error}</p>}
+        {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{error}</p>}
 
         <input
           className="border w-full py-2 px-4 rounded-md"
@@ -496,9 +545,10 @@ function Create() {
 
         <button
           type="submit"
-          className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600"
+          disabled={submitting}
+          className="rounded-xl bg-[#c8102e] px-5 py-3 font-bold text-white transition hover:bg-[#a90d26] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Subir Producto
+          {submitting ? "Guardando producto…" : "Guardar producto"}
         </button>
       </form>
     </div>

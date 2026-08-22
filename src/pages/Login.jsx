@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 function LoginPage() {
-  const { signInWithGoogle, signInWithPassword } = useAuth();
+  const { currentUser, signInWithGoogle, signInWithPassword } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,6 +17,10 @@ function LoginPage() {
       window.location.replace(`${window.location.protocol}//localhost:${window.location.port}${window.location.pathname}${window.location.search}`);
     }
   }, []);
+
+  useEffect(() => {
+    if (currentUser) navigate("/", { replace: true });
+  }, [currentUser, navigate]);
 
   const messageFor = (errorCode) => ({
     "auth/invalid-credential": "El correo o la contraseña no coinciden.",

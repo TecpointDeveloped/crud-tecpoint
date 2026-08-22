@@ -12,13 +12,23 @@ const defaultLocations = [
 const defaults = { mainWhatsApp:"50497157784",onlineWhatsApp:"50494659287",wholesaleWhatsApp:"50498191003",...PUBLIC_INTEGRATION_DEFAULTS,locations:defaultLocations };
 
 export default function SiteSettings() {
-  const [data,setData] = useState(defaults); const [saving,setSaving] = useState(false); const [saved,setSaved] = useState(false);
-  useEffect(()=>{getDoc(doc(db,"site_settings","general")).then(s=>s.exists()&&setData({...defaults,...s.data(),locations:s.data().locations?.length?s.data().locations:defaultLocations}));},[]);
+  const [data,setData] = useState(defaults); const [saving,setSaving] = useState(false); const [saved,setSaved] = useState(false); const [error,setError] = useState("");
+  useEffect(()=>{getDoc(doc(db,"site_settings","general")).then(s=>s.exists()&&setData({...defaults,...s.data(),locations:s.data().locations?.length?s.data().locations:defaultLocations})).catch(()=>setError("No fue posible cargar la configuración actual."));},[]);
   const update=(key,value)=>setData(prev=>({...prev,[key]:value}));
   const updateLocation=(index,key,value)=>update("locations",data.locations.map((location,i)=>i===index?{...location,[key]:value}:location));
-  const save=async(e)=>{e.preventDefault();setSaving(true);setSaved(false);try{await setDoc(doc(db,"site_settings","general"),{...data,updatedAt:serverTimestamp()},{merge:true});setSaved(true);}catch(error){alert(error.message);}finally{setSaving(false)}};
+  const save=async(e)=>{e.preventDefault();setSaving(true);setSaved(false);setError("");try{
+    const phones=[data.mainWhatsApp,data.onlineWhatsApp,data.wholesaleWhatsApp,...data.locations.map(location=>location.phone)].map(value=>String(value||"").replace(/\D/g,""));
+    if(phones.some(phone=>phone.length<11||phone.length>15)) throw new Error("Revise los números de WhatsApp e incluya el código de país 504.");
+    if(data.metaPixelId&&!/^\d{8,20}$/.test(String(data.metaPixelId).trim())) throw new Error("El ID de Meta Pixel debe contener únicamente números.");
+    if(data.gaMeasurementId&&!/^G-[A-Z0-9]+$/i.test(String(data.gaMeasurementId).trim())) throw new Error("El ID de Google Analytics debe comenzar con G-.");
+    if(!data.locations.length) throw new Error("Debe conservar al menos una ubicación.");
+    if(data.locations.some(location=>!location.name.trim()||!location.city.trim()||!location.detail.trim()||!/^https:\/\//i.test(location.maps))) throw new Error("Complete nombre, ciudad, dirección y enlace https:// de Google Maps en cada ubicación.");
+    const normalized={...data,mainWhatsApp:phones[0],onlineWhatsApp:phones[1],wholesaleWhatsApp:phones[2],locations:data.locations.map((location,index)=>({...location,phone:phones[index+3]})),updatedAt:serverTimestamp()};
+    await setDoc(doc(db,"site_settings","general"),normalized,{merge:true});setData(previous=>({...previous,...normalized,updatedAt:previous.updatedAt}));setSaved(true);
+  }catch(caught){setError(caught.message||"No fue posible guardar la configuración.");}finally{setSaving(false)}};
   return <form onSubmit={save} className="space-y-7">
     <header><p className="text-xs font-bold tracking-[.2em] text-red-600">CONFIGURACIÓN CENTRAL</p><h1 className="text-3xl font-bold">Integraciones, WhatsApp y ubicaciones</h1><p className="mt-2 max-w-3xl text-gray-600">Los cambios guardados se aplican en navegación, carrito, fichas, pie de página y puntos de atención sin editar el código.</p></header>
+    {error&&<p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     <section className="grid gap-4 lg:grid-cols-3">
       <StatusCard icon={BarChart3} title="Meta Pixel" active={Boolean(data.metaPixelId)} text={data.metaPixelId || "Falta configurar el ID"} href="https://business.facebook.com/events_manager2" />
       <StatusCard icon={BarChart3} title="Google Analytics 4" active={Boolean(data.gaMeasurementId)} text={data.gaMeasurementId || "Falta configurar el Measurement ID"} href="https://analytics.google.com/" />

@@ -24,13 +24,19 @@ export default function MarketingAssets() {
   const [poster, setPoster] = useState(null);
   const [items, setItems] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const load = async () => {
-    const groups = await Promise.all(["site_banners", "flash_promotions"].map(async (type) => {
-      const snapshot = await getDocs(collection(db, type));
-      return snapshot.docs.map((item) => ({ id: item.id, type, ...item.data() }));
-    }));
-    setItems(groups.flat().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)));
+    try {
+      setError("");
+      const groups = await Promise.all(["site_banners", "flash_promotions"].map(async (type) => {
+        const snapshot = await getDocs(collection(db, type));
+        return snapshot.docs.map((item) => ({ id: item.id, type, ...item.data() }));
+      }));
+      setItems(groups.flat().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)));
+    } catch {
+      setError("No fue posible cargar los banners y promociones.");
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -83,6 +89,10 @@ export default function MarketingAssets() {
     setSaving(true);
     try {
       const current = form.id ? items.find((item) => item.id === form.id && item.type === form.type) : null;
+      const cleanLink = form.linkUrl.trim();
+      if (cleanLink && !cleanLink.startsWith("/") && !/^https:\/\//i.test(cleanLink)) {
+        throw new Error("El enlace debe comenzar con / o usar una dirección https:// completa.");
+      }
       let imageUrl = current?.imageUrl || "";
       let mobileImageUrl = current?.mobileImageUrl || "";
       let videoUrl = current?.videoUrl || "";
@@ -109,7 +119,7 @@ export default function MarketingAssets() {
         mediaType: form.mediaType,
         title: form.title.trim(),
         subtitle: form.subtitle.trim(),
-        linkUrl: form.linkUrl.trim(),
+        linkUrl: cleanLink,
         cta: form.cta.trim(),
         alt: form.alt.trim() || form.title.trim(),
         active: Boolean(form.active),
@@ -138,8 +148,12 @@ export default function MarketingAssets() {
   };
   const remove = async (item) => {
     if (!confirm(`¿Eliminar “${item.title}”?`)) return;
-    await deleteDoc(doc(db, item.type, item.id));
-    await load();
+    try {
+      await deleteDoc(doc(db, item.type, item.id));
+      await load();
+    } catch {
+      setError("No fue posible eliminar el contenido. Inténtelo nuevamente.");
+    }
   };
 
   const isVideo = form.mediaType === "video";
@@ -149,6 +163,7 @@ export default function MarketingAssets() {
       <h1 className="text-3xl font-bold">Banners, videos y promociones</h1>
       <p className="mt-2 max-w-3xl text-gray-600">Publique piezas adaptadas a escritorio y celular. Los videos se reproducen sin sonido y deben ser breves y livianos.</p>
     </header>
+    {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
     <div className="grid gap-6 xl:grid-cols-[440px_1fr]">
       <form onSubmit={save} className="space-y-4 rounded-2xl border bg-white p-5 shadow-sm">
         <div className="grid grid-cols-2 gap-3">
