@@ -2,10 +2,15 @@ const imageUrls = (product) => Object.values(product.imagenes || {})
   .map((item) => item?.img?.trim())
   .filter((url) => url && !/default-product|placeholder|sin-imagen/i.test(url));
 
+const validUpc = (value) => {
+  const normalized = String(value || "").replace(/\s+/g, "");
+  return /^\d{8,14}$/.test(normalized) && !/^0+$/.test(normalized);
+};
+
 export function qualityIssues(product) {
   const issues = [];
   if (!String(product.sku || "").trim()) issues.push("SKU");
-  if (!String(product.extradata?.upc || "").trim()) issues.push("UPC");
+  if (!validUpc(product.extradata?.upc)) issues.push("UPC");
   if (!String(product.producto || "").trim()) issues.push("nombre");
   if (!String(product.slug || "").trim()) issues.push("slug");
   if (String(product.descripcion || "").trim().length < 20) issues.push("descripción");
@@ -20,7 +25,9 @@ export function duplicateKeys(products) {
   const buckets = { sku: new Map(), upc: new Map() };
   products.forEach((product) => {
     const sku = String(product.sku || "").trim().toLowerCase();
-    const upc = String(product.extradata?.upc || "").replace(/\s+/g, "");
+    const upc = validUpc(product.extradata?.upc)
+      ? String(product.extradata.upc).replace(/\s+/g, "")
+      : "";
     if (sku) buckets.sku.set(sku, [...(buckets.sku.get(sku) || []), product.id]);
     if (upc) buckets.upc.set(upc, [...(buckets.upc.get(upc) || []), product.id]);
   });
@@ -31,7 +38,9 @@ export function duplicateKeys(products) {
 }
 
 const normalizedSku = (product) => String(product.sku || "").trim().toLowerCase();
-const normalizedUpc = (product) => String(product.extradata?.upc || "").replace(/\s+/g, "");
+const normalizedUpc = (product) => validUpc(product.extradata?.upc)
+  ? String(product.extradata.upc).replace(/\s+/g, "")
+  : "";
 
 const contentScore = (product) => {
   const issues = qualityIssues(product).length;
