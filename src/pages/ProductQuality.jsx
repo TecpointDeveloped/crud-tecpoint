@@ -31,14 +31,18 @@ export default function ProductQuality() {
   const duplicateCount = new Set([...duplicates.sku, ...duplicates.upc]).size;
   const resolutionGroups = useMemo(() => duplicateResolutionGroups(products), [products]);
   const removalCandidates = useMemo(() => resolutionGroups.flatMap((group) => group.removals), [resolutionGroups]);
+  const nonPublishableCandidates = useMemo(() => {
+    const removalIds = new Set(removalCandidates.map((product) => product.id));
+    return products.filter((product) => qualityIssues(product).length || removalIds.has(product.id));
+  }, [products, removalCandidates]);
 
-  const downloadBackup = () => {
+  const downloadBackup = (candidates = removalCandidates, reason = "Respaldo previo a limpieza de SKU/UPC duplicados") => {
     const payload = {
       exportedAt: new Date().toISOString(),
-      reason: "Respaldo previo a limpieza de SKU/UPC duplicados",
+      reason,
       collection: "Products",
       keepers: resolutionGroups.map((group) => group.keeper),
-      removals: removalCandidates,
+      removals: candidates,
       groups: resolutionGroups.map((group) => ({
         keeperId: group.keeper.id,
         removalIds: group.removals.map((product) => product.id),
@@ -49,7 +53,7 @@ export default function ProductQuality() {
     const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `tecpoint-respaldo-duplicados-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.download = `tecpoint-respaldo-catalogo-${new Date().toISOString().slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
   };
@@ -60,7 +64,7 @@ export default function ProductQuality() {
     if (!accepted) return;
     setCleaning(true);
     setError("");
-    downloadBackup();
+    downloadBackup(removalCandidates);
     try {
       for (let index = 0; index < removalCandidates.length; index += 400) {
         const batch = writeBatch(db);
@@ -77,6 +81,30 @@ export default function ProductQuality() {
     }
   };
 
+  const removeNonPublishable = async () => {
+    if (!nonPublishableCandidates.length) return;
+    const retained = products.length - nonPublishableCandidates.length;
+    const accepted = confirm(`Se eliminarán ${nonPublishableCandidates.length} fichas incompletas o duplicadas y se conservarán ${retained} productos publicables. Primero se descargará el respaldo completo. ¿Continuar?`);
+    if (!accepted) return;
+    setCleaning(true);
+    setError("");
+    downloadBackup(nonPublishableCandidates, "Respaldo previo a depuración total de fichas no publicables");
+    try {
+      for (let index = 0; index < nonPublishableCandidates.length; index += 400) {
+        const batch = writeBatch(db);
+        nonPublishableCandidates.slice(index, index + 400).forEach((product) => batch.delete(doc(db, "Products", product.id)));
+        await batch.commit();
+      }
+      const removed = new Set(nonPublishableCandidates.map((product) => product.id));
+      setProducts((current) => current.filter((product) => !removed.has(product.id)));
+      alert(`Depuración completada: ${removed.size} fichas eliminadas y ${retained} productos publicables conservados.`);
+    } catch (cleanError) {
+      setError(`No se completó la depuración: ${cleanError.message}`);
+    } finally {
+      setCleaning(false);
+    }
+  };
+
   return <div className="space-y-6">
     <header><p className="text-xs font-bold tracking-[.2em] text-red-600">CONTROL DE PUBLICACIÓN</p><h1 className="text-3xl font-bold text-gray-950">Calidad del catálogo</h1><p className="mt-2 text-gray-600">Los productos incompletos o duplicados quedan fuera de la tienda hasta corregirse. No se alteran automáticamente SKU, UPC, precios ni existencias.</p></header>
     <div className="grid gap-4 md:grid-cols-3">
@@ -84,6 +112,12 @@ export default function ProductQuality() {
       <Stat icon={Copy} label="Con duplicidad" value={duplicateCount} tone="text-red-600" />
       <Stat icon={CheckCircle2} label="Listos para publicar" value={products.length - new Set(products.filter(p => qualityIssues(p).length || duplicates.sku.has(p.id) || duplicates.upc.has(p.id)).map(p => p.id)).size} tone="text-emerald-600" />
     </div>
+    {!loading && <section className="rounded-xl border border-red-300 bg-white p-5 shadow-sm">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div><p className="text-xs font-bold uppercase tracking-[.18em] text-red-700">Depuración total</p><h2 className="mt-1 text-xl font-bold">Dejar únicamente productos publicables</h2><p className="mt-2 max-w-3xl text-sm text-gray-700">Elimina fichas con datos faltantes y copias duplicadas inferiores. Conserva productos completos y una sola ficha principal por coincidencia real. El respaldo JSON se descarga antes de ejecutar el borrado.</p></div>
+        <button type="button" onClick={removeNonPublishable} disabled={!nonPublishableCandidates.length || cleaning} className="flex items-center justify-center gap-2 rounded-lg bg-gray-950 px-5 py-3 font-bold text-white disabled:opacity-50"><Trash2 size={18}/> {cleaning ? "Depurando…" : `Eliminar ${nonPublishableCandidates.length} no publicables`}</button>
+      </div>
+    </section>}
     <div className="flex flex-col gap-3 rounded-xl border bg-white p-4 sm:flex-row sm:items-center">
       <div className="flex flex-wrap gap-2">{[["incompletos","Incompletos"],["duplicados","Duplicados"],["publicables","Publicables"]].map(([value,label]) => <button key={value} onClick={() => setFilter(value)} className={`rounded-full px-4 py-2 text-sm font-semibold ${filter === value ? "bg-[#cf1533] text-white" : "bg-gray-100 text-gray-700"}`}>{label}</button>)}</div>
       <label className="flex w-full items-center gap-2 rounded-lg border px-3 sm:ml-auto sm:w-auto sm:min-w-[260px]"><Search size={16}/><input value={search} onChange={(e)=>setSearch(e.target.value)} className="min-w-0 flex-1 py-2 outline-none" placeholder="Buscar SKU, UPC o nombre" /></label>
@@ -91,7 +125,7 @@ export default function ProductQuality() {
     {filter === "duplicados" && !loading && <section className="rounded-xl border border-red-200 bg-red-50 p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div><p className="text-xs font-bold uppercase tracking-[.18em] text-red-700">Limpieza protegida</p><h2 className="mt-1 text-xl font-bold">Conservar la ficha más completa</h2><p className="mt-2 max-w-3xl text-sm text-gray-700">Se detectaron {resolutionGroups.length} grupos. El sistema conservará una ficha por grupo, priorizando menos faltantes, más fotografías, descripción y especificaciones. Antes de eliminar se descarga el respaldo íntegro.</p></div>
-        <div className="flex flex-wrap gap-2"><button type="button" onClick={downloadBackup} disabled={!removalCandidates.length || cleaning} className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 font-bold disabled:opacity-50"><Download size={18}/> Descargar respaldo</button><button type="button" onClick={removeDuplicates} disabled={!removalCandidates.length || cleaning} className="flex items-center gap-2 rounded-lg bg-red-700 px-4 py-3 font-bold text-white disabled:opacity-50"><Trash2 size={18}/> {cleaning ? "Limpiando…" : `Eliminar ${removalCandidates.length} copias`}</button></div>
+        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => downloadBackup(removalCandidates)} disabled={!removalCandidates.length || cleaning} className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 font-bold disabled:opacity-50"><Download size={18}/> Descargar respaldo</button><button type="button" onClick={removeDuplicates} disabled={!removalCandidates.length || cleaning} className="flex items-center gap-2 rounded-lg bg-red-700 px-4 py-3 font-bold text-white disabled:opacity-50"><Trash2 size={18}/> {cleaning ? "Limpiando…" : `Eliminar ${removalCandidates.length} copias`}</button></div>
       </div>
     </section>}
     {error ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800">{error}</p> : loading ? <p>Cargando auditoría…</p> : <div className="overflow-hidden rounded-xl border bg-white"><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left"><thead className="bg-gray-950 text-xs uppercase tracking-wider text-white"><tr><th className="p-4">Producto</th><th>SKU</th><th>UPC</th><th>Estado</th><th className="pr-4">Acción</th></tr></thead><tbody>{rows.map(({product,issues,duplicateSku,duplicateUpc}) => <tr key={product.id} className="border-t"><td className="p-4"><div className="flex items-center gap-3">{product.imagenes?.imagen_01?.img ? <img src={product.imagenes.imagen_01.img} alt="" className="h-12 w-12 rounded object-contain"/> : <span className="grid h-12 w-12 place-items-center rounded bg-gray-100"><ImageOff/></span>}<span className="max-w-sm font-semibold">{product.producto || "Sin nombre"}</span></div></td><td>{product.sku || "—"}{duplicateSku && <b className="block text-xs text-red-600">Duplicado</b>}</td><td>{product.extradata?.upc || "—"}{duplicateUpc && <b className="block text-xs text-red-600">Duplicado</b>}</td><td><div className="flex max-w-xs flex-wrap gap-1">{issues.map(issue => <span key={issue} className="rounded bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">Falta {issue}</span>)}{!issues.length && !duplicateSku && !duplicateUpc && <span className="text-sm font-semibold text-emerald-700">Listo</span>}</div></td><td className="pr-4"><a href={`/update?id=${encodeURIComponent(product.id)}`} className="font-bold text-[#cf1533]">Corregir →</a></td></tr>)}</tbody></table></div>{!rows.length && <p className="p-8 text-center text-gray-500">No hay productos en este estado.</p>}</div>}
