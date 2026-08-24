@@ -57,7 +57,7 @@ function LoginPage() {
   return <main className="grid min-h-screen bg-[#f3f5f6] lg:grid-cols-[1.05fr_.95fr]">
     <section className="relative hidden overflow-hidden bg-[#111817] p-12 text-white lg:flex lg:flex-col lg:justify-between">
       <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full border-[70px] border-[#c8102e] opacity-90" />
-      <div className="relative z-10 flex items-center gap-3"><img src="/brand/logo-principal.svg" alt="TECPOINT" width="230" height="48" className="h-12 max-w-[230px] object-contain object-left" /></div>
+      <div className="relative z-10 flex items-center gap-3"><img src="/brand/logo-reserva.svg" alt="TECPOINT" width="230" height="48" className="h-12 max-w-[230px] object-contain object-left" /></div>
       <div className="relative z-10 max-w-xl"><p className="text-xs font-bold tracking-[.22em] text-[#ef233c]">ADMINISTRACIÓN SEGURA</p><h1 className="mt-4 text-6xl font-semibold leading-[.95] tracking-[-.055em]">Todo TECPOINT, en un solo lugar.</h1><p className="mt-7 max-w-lg text-lg leading-8 text-gray-300">Gestione catálogo, calidad, banners, videos, ubicaciones e integraciones con una experiencia clara y ordenada.</p></div>
       <div className="relative z-10 flex items-center gap-3 text-sm text-gray-400"><ShieldCheck className="text-[#ef233c]" /> Acceso exclusivo para personal autorizado.</div>
     </section>
