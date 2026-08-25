@@ -36,8 +36,8 @@ export async function fetchCatalogFromServer() {
     const payload = await response.json();
     products.push(
       ...(payload.documents || []).map((document) => ({
-        id: document.name.split("/").pop(),
         ...decodeFields(document.fields),
+        id: document.name.split("/").pop(),
       })),
     );
     pageToken = payload.nextPageToken || "";
