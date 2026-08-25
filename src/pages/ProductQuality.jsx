@@ -11,6 +11,7 @@ export default function ProductQuality() {
   const [loading, setLoading] = useState(true);
   const [cleaning, setCleaning] = useState(false);
   const [error, setError] = useState("");
+  const [pendingCleanup, setPendingCleanup] = useState(null);
   useEffect(() => { getDocs(collection(db, "Products")).then((snapshot) => {
     setProducts(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
   }).catch(() => setError("No fue posible cargar la auditoría del catálogo.")).finally(() => setLoading(false)); }, []);
@@ -58,10 +59,9 @@ export default function ProductQuality() {
     URL.revokeObjectURL(url);
   };
 
-  const removeDuplicates = async () => {
+  const executeRemoveDuplicates = async () => {
     if (!removalCandidates.length) return;
-    const accepted = confirm(`Se conservarán ${resolutionGroups.length} fichas principales y se eliminarán ${removalCandidates.length} copias inferiores. Primero se descargará el respaldo completo. ¿Continuar?`);
-    if (!accepted) return;
+    setPendingCleanup(null);
     setCleaning(true);
     setError("");
     downloadBackup(removalCandidates);
@@ -81,11 +81,20 @@ export default function ProductQuality() {
     }
   };
 
-  const removeNonPublishable = async () => {
+  const removeDuplicates = () => {
+    if (!removalCandidates.length) return;
+    setPendingCleanup({
+      title: "Eliminar copias duplicadas",
+      message: `Se conservarán ${resolutionGroups.length} fichas principales y se eliminarán ${removalCandidates.length} copias inferiores. Antes de eliminar se descargará el respaldo completo.`,
+      confirmLabel: `Eliminar ${removalCandidates.length} copias`,
+      action: executeRemoveDuplicates,
+    });
+  };
+
+  const executeRemoveNonPublishable = async () => {
     if (!nonPublishableCandidates.length) return;
     const retained = products.length - nonPublishableCandidates.length;
-    const accepted = confirm(`Se eliminarán ${nonPublishableCandidates.length} fichas incompletas o duplicadas y se conservarán ${retained} productos publicables. Primero se descargará el respaldo completo. ¿Continuar?`);
-    if (!accepted) return;
+    setPendingCleanup(null);
     setCleaning(true);
     setError("");
     downloadBackup(nonPublishableCandidates, "Respaldo previo a depuración total de fichas no publicables");
@@ -105,7 +114,30 @@ export default function ProductQuality() {
     }
   };
 
+  const removeNonPublishable = () => {
+    if (!nonPublishableCandidates.length) return;
+    const retained = products.length - nonPublishableCandidates.length;
+    setPendingCleanup({
+      title: "Eliminar fichas no publicables",
+      message: `Se eliminarán ${nonPublishableCandidates.length} fichas incompletas o duplicadas y se conservarán ${retained} productos publicables. Antes de eliminar se descargará el respaldo completo.`,
+      confirmLabel: `Eliminar ${nonPublishableCandidates.length} fichas`,
+      action: executeRemoveNonPublishable,
+    });
+  };
+
   return <div className="space-y-6">
+    {pendingCleanup && <div className="fixed inset-0 z-50 grid place-items-center bg-gray-950/70 p-4" role="presentation">
+      <section role="dialog" aria-modal="true" aria-labelledby="cleanup-title" className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+        <p className="text-xs font-bold uppercase tracking-[.18em] text-red-700">Confirmación requerida</p>
+        <h2 id="cleanup-title" className="mt-2 text-2xl font-bold text-gray-950">{pendingCleanup.title}</h2>
+        <p className="mt-3 leading-7 text-gray-700">{pendingCleanup.message}</p>
+        <p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm font-semibold text-amber-900">Esta acción elimina registros de Firebase y no se puede deshacer desde el panel.</p>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button type="button" onClick={() => setPendingCleanup(null)} className="rounded-lg border border-gray-300 px-5 py-3 font-bold text-gray-800">Cancelar</button>
+          <button type="button" onClick={pendingCleanup.action} className="rounded-lg bg-red-700 px-5 py-3 font-bold text-white">{pendingCleanup.confirmLabel}</button>
+        </div>
+      </section>
+    </div>}
     <header><p className="text-xs font-bold tracking-[.2em] text-red-600">CONTROL DE PUBLICACIÓN</p><h1 className="text-3xl font-bold text-gray-950">Calidad del catálogo</h1><p className="mt-2 text-gray-600">Los productos incompletos o duplicados quedan fuera de la tienda hasta corregirse. No se alteran automáticamente SKU, UPC, precios ni existencias.</p></header>
     <div className="grid gap-4 md:grid-cols-3">
       <Stat icon={AlertTriangle} label="Incompletos" value={incomplete} tone="text-amber-600" />
