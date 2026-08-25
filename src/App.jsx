@@ -18,7 +18,7 @@ const SiteSettings = lazy(() => import('./pages/SiteSettings'));
 
 // Importa db y las funciones de Firestore
 import { db } from './firebaseConfig.js';
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocsFromServer, doc, getDoc } from 'firebase/firestore';
 import { duplicateKeys, qualityIssues } from './lib/productQuality';
 import { PUBLIC_INTEGRATION_DEFAULTS } from './lib/integrationDefaults';
 
@@ -47,7 +47,7 @@ const DashboardHome = () => {
     try {
       // El panel usa únicamente colecciones reales del proyecto.
       const productsCollectionRef = collection(db, "Products");
-      const productsSnapshot = await getDocs(productsCollectionRef);
+      const productsSnapshot = await getDocsFromServer(productsCollectionRef);
       const products = productsSnapshot.docs.map((productDoc) => ({ id: productDoc.id, ...productDoc.data() }));
       const duplicates = duplicateKeys(products);
       const duplicateIds = new Set([...duplicates.sku, ...duplicates.upc]);
