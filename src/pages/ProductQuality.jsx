@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDocsFromServer, writeBatch } from "firebase/firestore";
+import { doc, writeBatch } from "firebase/firestore";
 import { AlertTriangle, CheckCircle2, Copy, Download, ImageOff, Search, Trash2 } from "lucide-react";
 import { db } from "../firebaseConfig";
 import { duplicateKeys, duplicateResolutionGroups, qualityIssues } from "../lib/productQuality";
+import { fetchCatalogFromServer } from "../lib/firestoreRest";
 
 export default function ProductQuality() {
   const [products, setProducts] = useState([]);
@@ -12,9 +13,10 @@ export default function ProductQuality() {
   const [cleaning, setCleaning] = useState(false);
   const [error, setError] = useState("");
   const [pendingCleanup, setPendingCleanup] = useState(null);
-  useEffect(() => { getDocsFromServer(collection(db, "Products")).then((snapshot) => {
-    setProducts(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-  }).catch(() => setError("No fue posible cargar la auditoría del catálogo.")).finally(() => setLoading(false)); }, []);
+  useEffect(() => { fetchCatalogFromServer()
+    .then(setProducts)
+    .catch(() => setError("No fue posible cargar la auditoría del catálogo."))
+    .finally(() => setLoading(false)); }, []);
   const duplicates = useMemo(() => duplicateKeys(products), [products]);
   const rows = useMemo(() => products.map((product) => ({
     product,
