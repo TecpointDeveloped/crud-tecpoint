@@ -22,18 +22,15 @@ export function qualityIssues(product) {
 }
 
 export function duplicateKeys(products) {
-  const buckets = { sku: new Map(), upc: new Map() };
+  const buckets = { sku: new Map() };
   products.forEach((product) => {
     const sku = String(product.sku || "").trim().toLowerCase();
-    const upc = validUpc(product.extradata?.upc)
-      ? String(product.extradata.upc).replace(/\s+/g, "")
-      : "";
     if (sku) buckets.sku.set(sku, [...(buckets.sku.get(sku) || []), product.id]);
-    if (upc) buckets.upc.set(upc, [...(buckets.upc.get(upc) || []), product.id]);
   });
   return {
     sku: new Set([...buckets.sku.values()].filter((ids) => ids.length > 1).flat()),
-    upc: new Set([...buckets.upc.values()].filter((ids) => ids.length > 1).flat()),
+    // W35 contains valid variants that share UPC while keeping unique SKUs.
+    upc: new Set(),
   };
 }
 
@@ -83,7 +80,7 @@ export function duplicateResolutionGroups(products) {
     });
   };
   connectDuplicates(normalizedSku);
-  connectDuplicates(normalizedUpc);
+  // UPC is an audit field, not a deletion key. Variants may legitimately share it.
 
   const components = new Map();
   products.forEach((product) => {

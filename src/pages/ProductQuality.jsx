@@ -1,9 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
-import { doc, writeBatch } from "firebase/firestore";
-import { AlertTriangle, CheckCircle2, Copy, Download, ImageOff, Search, Trash2 } from "lucide-react";
+import { doc, serverTimestamp, writeBatch } from "firebase/firestore";
+import { AlertTriangle, CheckCircle2, Copy, Database, Download, ImageOff, Search, Trash2 } from "lucide-react";
 import { db } from "../firebaseConfig";
 import { duplicateKeys, duplicateResolutionGroups, qualityIssues } from "../lib/productQuality";
 import { fetchCatalogFromServer } from "../lib/firestoreRest";
+import w35Catalog from "../data/current-catalog-w35.json";
+
+const safeDocumentId = (sku) => `w35-${String(sku || "").trim().replace(/[^a-z0-9_-]+/gi, "-")}`;
+const nonBlockingIssues = new Set(["UPC", "foto", "descripción"]);
+const blockingIssues = (product) => qualityIssues(product).filter((issue) => !nonBlockingIssues.has(issue));
+
+function w35Payload(record, existing) {
+  const hasExistingImages = Object.values(existing?.imagenes || {}).some((image) => image?.img && !/default-product|placeholder|sin-imagen|brand\/isologo/i.test(image.img));
+  const images = hasExistingImages ? existing.imagenes : { imagen_01: { id: "imagen_01", img: "/brand/isologo.svg" } };
+  const base = {
+    sku: record.sku,
+    producto: record.description,
+    slug: record.slug,
+    descripcion: record.description,
+    categorias: [record.category],
+    Subcategorias: record.subcategory,
+    marca_producto: { ...(existing?.marca_producto || {}), marca: record.brand },
+    precio: { detalle: record.detailPrice, mayoreo: record.bronzePrice },
+    imagenes: images,
+    extradata: {
+      ...(existing?.extradata || {}),
+      upc: record.upc,
+      stock: Number(record.stock) > 0,
+      inventoryQuantity: Number(record.stock) || 0,
+      inTransitQuantity: Number(record.inTransit) || 0,
+      imagePending: !hasExistingImages,
+      wholesaleEnabled: Number(record.bronzePrice) > 0,
+      wholesaleCategory: record.category,
+    },
+    fecha_agregado: existing?.fecha_agregado || "2026-08-31T00:00:00.000Z",
+    sourceCatalog: "W35",
+    sourceRow: record.sourceRow,
+    updatedAt: serverTimestamp(),
+  };
+  return {
+    ...base,
+    publication_status: blockingIssues(base).length ? "draft_incomplete" : "ready",
+    publication_issues: qualityIssues(base),
+  };
+}
 
 export default function ProductQuality() {
   const [products, setProducts] = useState([]);
@@ -13,6 +53,8 @@ export default function ProductQuality() {
   const [cleaning, setCleaning] = useState(false);
   const [error, setError] = useState("");
   const [pendingCleanup, setPendingCleanup] = useState(null);
+  const [syncingW35, setSyncingW35] = useState(false);
+  const [syncNotice, setSyncNotice] = useState("");
   useEffect(() => { fetchCatalogFromServer()
     .then(setProducts)
     .catch(() => setError("No fue posible cargar la auditoría del catálogo."))
@@ -27,17 +69,43 @@ export default function ProductQuality() {
     const matchesSearch = `${row.product.producto} ${row.product.sku} ${row.product.extradata?.upc}`.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
     if (filter === "duplicados") return row.duplicateSku || row.duplicateUpc;
-    if (filter === "publicables") return !row.issues.length && !row.duplicateSku && !row.duplicateUpc;
+    if (filter === "publicables") return !blockingIssues(row.product).length && !row.duplicateSku && !row.duplicateUpc;
     return row.issues.length > 0;
   }), [products, duplicates, filter, search]);
-  const incomplete = products.filter((product) => qualityIssues(product).length).length;
+  const incomplete = products.filter((product) => blockingIssues(product).length).length;
   const duplicateCount = new Set([...duplicates.sku, ...duplicates.upc]).size;
   const resolutionGroups = useMemo(() => duplicateResolutionGroups(products), [products]);
   const removalCandidates = useMemo(() => resolutionGroups.flatMap((group) => group.removals), [resolutionGroups]);
   const nonPublishableCandidates = useMemo(() => {
     const removalIds = new Set(removalCandidates.map((product) => product.id));
-    return products.filter((product) => qualityIssues(product).length || removalIds.has(product.id));
+    return products.filter((product) => blockingIssues(product).length || removalIds.has(product.id));
   }, [products, removalCandidates]);
+
+  const syncW35 = async () => {
+    setSyncingW35(true);
+    setError("");
+    setSyncNotice("");
+    try {
+      const current = await fetchCatalogFromServer();
+      const existingBySku = new Map(current.map((product) => [String(product.sku || "").trim().toLowerCase(), product]));
+      const records = w35Catalog.records;
+      for (let index = 0; index < records.length; index += 400) {
+        const batch = writeBatch(db);
+        records.slice(index, index + 400).forEach((record) => {
+          const existing = existingBySku.get(String(record.sku || "").trim().toLowerCase());
+          batch.set(doc(db, "Products", existing?.id || safeDocumentId(record.sku)), w35Payload(record, existing), { merge: true });
+        });
+        await batch.commit();
+      }
+      const refreshed = await fetchCatalogFromServer();
+      setProducts(refreshed);
+      setSyncNotice(`W35 sincronizado: ${records.length} SKU revisados y precios/existencias actualizados.`);
+    } catch (syncError) {
+      setError(`No se completó la sincronización W35: ${syncError.message}`);
+    } finally {
+      setSyncingW35(false);
+    }
+  };
 
   const downloadBackup = (candidates = removalCandidates, reason = "Respaldo previo a limpieza de SKU/UPC duplicados") => {
     const payload = {
@@ -140,15 +208,16 @@ export default function ProductQuality() {
         </div>
       </section>
     </div>}
-    <header><p className="text-xs font-bold tracking-[.2em] text-red-600">CONTROL DE PUBLICACIÓN</p><h1 className="text-3xl font-bold text-gray-950">Calidad del catálogo</h1><p className="mt-2 text-gray-600">Los productos incompletos o duplicados quedan fuera de la tienda hasta corregirse. No se alteran automáticamente SKU, UPC, precios ni existencias.</p></header>
+    <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-xs font-bold tracking-[.2em] text-red-600">CONTROL DE PUBLICACIÓN</p><h1 className="text-3xl font-bold text-gray-950">Calidad del catálogo</h1><p className="mt-2 text-gray-600">W35 conserva todos los SKU en el CRUD. La cantidad de existencia es interna; los productos sin foto usan temporalmente el isologo.</p></div><button type="button" onClick={syncW35} disabled={syncingW35} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#c8102e] px-5 font-bold text-white disabled:opacity-50"><Database size={18}/>{syncingW35 ? "Sincronizando W35…" : "Sincronizar catálogo W35"}</button></header>
+    {syncNotice && <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-semibold text-emerald-800">{syncNotice}</p>}
     <div className="grid gap-4 md:grid-cols-3">
       <Stat icon={AlertTriangle} label="Incompletos" value={incomplete} tone="text-amber-600" />
       <Stat icon={Copy} label="Con duplicidad" value={duplicateCount} tone="text-red-600" />
-      <Stat icon={CheckCircle2} label="Listos para publicar" value={products.length - new Set(products.filter(p => qualityIssues(p).length || duplicates.sku.has(p.id) || duplicates.upc.has(p.id)).map(p => p.id)).size} tone="text-emerald-600" />
+      <Stat icon={CheckCircle2} label="Listos para publicar" value={products.length - new Set(products.filter(p => blockingIssues(p).length || duplicates.sku.has(p.id) || duplicates.upc.has(p.id)).map(p => p.id)).size} tone="text-emerald-600" />
     </div>
     {!loading && <section className="rounded-xl border border-red-300 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div><p className="text-xs font-bold uppercase tracking-[.18em] text-red-700">Depuración total</p><h2 className="mt-1 text-xl font-bold">Dejar únicamente productos publicables</h2><p className="mt-2 max-w-3xl text-sm text-gray-700">Elimina fichas con datos faltantes y copias duplicadas inferiores. Conserva productos completos y una sola ficha principal por coincidencia real. El respaldo JSON se descarga antes de ejecutar el borrado.</p></div>
+        <div><p className="text-xs font-bold uppercase tracking-[.18em] text-red-700">Depuración protegida</p><h2 className="mt-1 text-xl font-bold">Eliminar solo fichas realmente no publicables</h2><p className="mt-2 max-w-3xl text-sm text-gray-700">Conserva productos sin foto, UPC o descripción extensa. Solo propone eliminar fichas sin precio válido o copias con el mismo SKU. El respaldo JSON se descarga antes de ejecutar el borrado.</p></div>
         <button type="button" onClick={removeNonPublishable} disabled={!nonPublishableCandidates.length || cleaning} className="flex items-center justify-center gap-2 rounded-lg bg-gray-950 px-5 py-3 font-bold text-white disabled:opacity-50"><Trash2 size={18}/> {cleaning ? "Depurando…" : `Eliminar ${nonPublishableCandidates.length} no publicables`}</button>
       </div>
     </section>}
