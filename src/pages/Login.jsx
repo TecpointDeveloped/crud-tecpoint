@@ -67,12 +67,12 @@ function LoginPage() {
         <div className="mb-8 flex items-center gap-3 lg:hidden"><img src="/brand/isologo.svg" alt="" width="44" height="44" className="h-11 w-11 rounded-xl" /><strong className="text-xl">TECPOINT</strong></div>
         <p className="text-xs font-bold uppercase tracking-[.2em] text-[#c8102e]">Panel administrativo</p>
         <h2 className="mt-3 text-4xl font-semibold tracking-[-.045em] text-[#111817]">Bienvenido.</h2>
-        <p className="mt-3 leading-7 text-gray-600">Ingrese con la cuenta asignada. Sus cambios quedarán registrados en Firebase.</p>
+        <p className="mt-3 leading-7 text-gray-600">Ingrese con la cuenta administrativa asignada. Ningún otro correo podrá acceder.</p>
 
         {error && <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800" role="alert">{error}</div>}
 
         <form onSubmit={handlePassword} className="mt-7 space-y-4">
-          <label className="block text-sm font-semibold text-gray-800">Correo electrónico<input type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="mt-2 h-14 w-full rounded-xl border border-gray-300 px-4 font-normal outline-none transition focus:border-[#c8102e] focus:ring-4 focus:ring-red-50" placeholder="nombre@tecpoint.ws" /></label>
+          <label className="block text-sm font-semibold text-gray-800">Correo electrónico<input type="email" autoComplete="username" value={email} onChange={event => setEmail(event.target.value)} required className="mt-2 h-14 w-full rounded-xl border border-gray-300 px-4 font-normal outline-none transition focus:border-[#c8102e] focus:ring-4 focus:ring-red-50" placeholder="Correo administrativo" /></label>
           <label className="block text-sm font-semibold text-gray-800">Contraseña<span className="relative mt-2 flex"><input type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={event => setPassword(event.target.value)} minLength={8} required className="h-14 w-full rounded-xl border border-gray-300 px-4 pr-12 font-normal outline-none transition focus:border-[#c8102e] focus:ring-4 focus:ring-red-50" placeholder="⬢⬢⬢⬢⬢⬢⬢⬢⬢⬢⬢⬢" /><button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} className="absolute right-1 top-1 grid h-11 w-11 place-items-center rounded-lg text-gray-500 hover:bg-gray-100">{showPassword ? <EyeOff size={19} /> : <Eye size={19} />}</button></span></label>
           <button disabled={Boolean(loading)} className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#111817] px-5 font-bold text-white transition hover:bg-[#c8102e] disabled:opacity-60"><LogIn size={18} />{loading === "password" ? "Verificando⬦" : "Iniciar sesión"}</button>
         </form>

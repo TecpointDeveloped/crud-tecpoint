@@ -3,14 +3,7 @@ service firebase.storage {
   match /b/{bucket}/o {
     function isAdmin() {
       return request.auth != null
-        && (
-          request.auth.token.role == 'admin'
-          || request.auth.token.email in [
-            'administracion@tecpoint.ws',
-            'marketing@tecpoint.ws',
-            'tecpointdistribucion2@gmail.com'
-          ]
-        );
+        && request.auth.token.email == 'tecpointdistribucion2@gmail.com';
     }
 
     match /{allPaths=**} {

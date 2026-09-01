@@ -1,21 +1,12 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useState, useEffect } from 'react';
 import { auth } from '../src/firebaseConfig'; // Importa tu instancia de auth
-import { onAuthStateChanged, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signInWithRedirect, signOut } from 'firebase/auth';
+import { onAuthStateChanged, GoogleAuthProvider, signInWithEmailAndPassword, signInWithPopup, signOut } from 'firebase/auth';
 
 const AuthContext = createContext();
-const AUTHORIZED_EMAILS = new Set([
-  'administracion@tecpoint.ws',
-  'marketing@tecpoint.ws',
-  'tecpointdistribucion2@gmail.com',
-]);
+const AUTHORIZED_EMAIL = 'tecpointdistribucion2@gmail.com';
 
-const isAuthorized = async (user) => {
-  if (!user?.email) return false;
-  if (AUTHORIZED_EMAILS.has(user.email.toLowerCase())) return true;
-  const token = await user.getIdTokenResult();
-  return token.claims.role === 'admin';
-};
+const isAuthorized = (user) => user?.email?.toLowerCase() === AUTHORIZED_EMAIL;
 
 export const useAuth = () => {
   return useContext(AuthContext);
@@ -28,7 +19,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       try {
-        if (user && await isAuthorized(user)) {
+        if (user && isAuthorized(user)) {
           setCurrentUser(user);
         } else {
           if (user) await signOut(auth);
@@ -50,7 +41,7 @@ export const AuthProvider = ({ children }) => {
     provider.setCustomParameters({ prompt: 'select_account' });
     try {
       const result = await signInWithPopup(auth, provider);
-      if (!await isAuthorized(result.user)) {
+      if (!isAuthorized(result.user)) {
         await signOut(auth);
         const accessError = new Error('Esta cuenta no está autorizada para administrar TECPOINT.');
         accessError.code = 'auth/access-denied';
@@ -59,17 +50,13 @@ export const AuthProvider = ({ children }) => {
       return result.user;
     } catch (error) {
       console.error("Error al iniciar sesión con Google:", error.message);
-      if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/network-request-failed'].includes(error.code)) {
-        await signInWithRedirect(auth, provider);
-        return null;
-      }
       throw error; // Propagar el error para manejarlo en el componente de Login
     }
   };
 
   const signInWithPassword = async (email, password) => {
     const result = await signInWithEmailAndPassword(auth, email.trim(), password);
-    if (!await isAuthorized(result.user)) {
+    if (!isAuthorized(result.user)) {
       await signOut(auth);
       const accessError = new Error('Esta cuenta no está autorizada para administrar TECPOINT.');
       accessError.code = 'auth/access-denied';
