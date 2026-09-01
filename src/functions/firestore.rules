@@ -33,5 +33,31 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    match /sales_conversations/{conversationId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /sales_orders/{orderId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /referral_codes/{codeId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /referral_redemptions/{redemptionId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /site_collections/{collectionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /wholesale_leads/{leadId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
   }
 }

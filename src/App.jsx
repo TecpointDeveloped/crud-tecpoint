@@ -25,7 +25,8 @@ import { fetchCatalogFromServer } from './lib/firestoreRest';
 
 import {
   Home, Plus, FileText, PlusCircle, Pencil, LogOut,
-  UserCircle2, Package, Tag, AlertTriangle, CheckCircle2, BadgeCheck, Images, Settings2, Menu, X
+  UserCircle2, Package, Tag, AlertTriangle, CheckCircle2, BadgeCheck, Images, Settings2, Menu, X,
+  Percent, Users, Megaphone, Layers3, ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -183,7 +184,7 @@ const SidebarContent = ({ onNavigate }) => {
   return (
     <>
       <div className="text-xl font-bold mb-8 text-gray-800">Tecpoint</div>
-      <nav className="space-y-2 flex-grow overflow-y-auto pb-4">
+      <nav className="min-h-0 flex-grow space-y-1 overflow-y-auto overscroll-contain pb-6 pr-1">
         <NavItem onNavigate={onNavigate} to="/" icon={<Home className="w-5 h-5" />} text="Dashboard" />
         <NavItem onNavigate={onNavigate} to="/configuracion" icon={<Settings2 className="w-5 h-5" />} text="Integraciones y contacto" />
         <NavItem onNavigate={onNavigate} to="/projects" icon={<FileText className="w-5 h-5" />} text="Reporte" />
@@ -194,18 +195,26 @@ const SidebarContent = ({ onNavigate }) => {
         <NavItem onNavigate={onNavigate} to="/calidad" icon={<BadgeCheck className="w-5 h-5" />} text="Calidad y duplicados" />
         <div className="font-semibold text-sm mt-6 mb-2 text-gray-500 uppercase tracking-wider pt-4 border-t border-gray-100">Contenido web</div>
         <NavItem onNavigate={onNavigate} to="/contenido" icon={<Images className="w-5 h-5" />} text="Banners, videos y promociones" />
+        <NavExternal onNavigate={onNavigate} href="https://tecpoint.ws/admin/categorias" icon={<Layers3 className="w-5 h-5" />} text="Categorías y colecciones" />
+        <NavExternal onNavigate={onNavigate} href="https://tecpoint.ws/admin/mayoreo" icon={<Users className="w-5 h-5" />} text="Mayoreo" />
+
+        <div className="font-semibold text-sm mt-6 mb-2 text-gray-500 uppercase tracking-wider pt-4 border-t border-gray-100">Ventas y marketing</div>
+        <NavExternal onNavigate={onNavigate} href="https://tecpoint.ws/admin/codigos" icon={<Percent className="w-5 h-5" />} text="Códigos de descuento" />
+        <NavExternal onNavigate={onNavigate} href="https://tecpoint.ws/admin/meta" icon={<Megaphone className="w-5 h-5" />} text="Meta Ads y publicaciones" />
+        <NavExternal onNavigate={onNavigate} href="https://tecpoint.ws/admin/comercial" icon={<Users className="w-5 h-5" />} text="Asesores y clientes" />
+        <NavExternal onNavigate={onNavigate} href="https://tecpoint.ws/admin/marketing" icon={<Images className="w-5 h-5" />} text="Gestor web avanzado" />
       </nav>
       {currentUser && (
-        <div className="mt-auto pt-4 border-t border-gray-100">
-          <div className="flex items-center space-x-2 p-2">
+        <div className="mt-auto shrink-0 border-t border-gray-100 bg-white pt-3">
+          <div className="flex min-w-0 items-center gap-2 p-2">
             {currentUser.photoURL ? (
               <img src={currentUser.photoURL} alt="User Avatar" className="h-8 w-8 rounded-full object-cover" />
             ) : (
               <UserCircle2 className="h-8 w-8 text-gray-400" />
             )}
-            <div className="flex-grow">
+            <div className="min-w-0 flex-grow">
               <p className="text-sm font-medium text-gray-800">{currentUser.displayName || "Usuario"}</p>
-              <p className="text-xs text-gray-500 overflow-hidden text-ellipsis whitespace-nowrap">{currentUser.email}</p>
+              <p className="truncate text-xs text-gray-500" title={currentUser.email}>{currentUser.email}</p>
             </div>
             <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 p-1 rounded-md transition-colors">
               <LogOut className="w-5 h-5" />
@@ -286,5 +295,17 @@ const NavItem = ({ to, icon, text, onNavigate }) => {
     </Link>
   );
 };
+
+const NavExternal = ({ href, icon, text, onNavigate }) => (
+  <a
+    href={href}
+    onClick={onNavigate}
+    className="flex items-center gap-2 rounded-md p-2 text-gray-700 transition-colors hover:bg-gray-100"
+  >
+    {icon}
+    <span className="min-w-0 flex-1">{text}</span>
+    <ExternalLink className="h-3.5 w-3.5 shrink-0 text-gray-400" aria-hidden="true" />
+  </a>
+);
 
 export default App;
